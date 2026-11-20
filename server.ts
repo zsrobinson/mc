@@ -1,3 +1,4 @@
+import { normalizeServerRecords } from "./src/server-state";
 import { mountHistory } from "./web/history";
 import { modrinthIcon } from "./web/modrinth";
 import { metadata } from "./control/telemetry";
@@ -153,7 +154,7 @@ app.post("/api/control", async (c) => {
         req.end(body);
       },
     );
-    return c.json(JSON.parse(result.body), result.status as 200);
+    return c.json(normalizeServerRecords(JSON.parse(result.body)), result.status as 200);
   } catch {
     return c.json({ error: "Control service unavailable" }, 502);
   }

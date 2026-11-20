@@ -23,10 +23,23 @@ test("Access signatures, audience, expiry, Origin and Unix helper boundary", asy
   const issuer =
     "http://127.0.0.1:" + (certs.address() as { port: number }).port;
   const secret = "test-only-helper-secret";
-  const helper = createServer((req, res) => {
+  const helper = createServer(async (req, res) => {
     assert.equal(req.headers.authorization, "Bearer " + secret);
     res.setHeader("Content-Type", "application/json");
-    res.end("[]");
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    const input = JSON.parse(body);
+    res.end(
+      JSON.stringify(
+        input.verb === "status"
+          ? {
+              name: input.name,
+              state: input.name === "alpha" ? "absent" : "running",
+              players: null,
+            }
+          : [],
+      ),
+    );
   });
   const socket = join(dir, "helper.sock");
   await new Promise<void>((r) => helper.listen(socket, r));
@@ -75,6 +88,23 @@ test("Access signatures, audience, expiry, Origin and Unix helper boundary", asy
     const session = await fetch(origin + "/api/session", { headers });
     assert.equal(session.status, 200);
     assert.equal((await session.json()).email, "operator@example.test");
+    for (const [name, state] of [
+      ["alpha", "stopped"],
+      ["bravo", "starting"],
+    ]) {
+      const status = await fetch(origin + "/api/control", {
+        method: "POST",
+        headers: {
+          ...headers,
+          Origin: origin,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ verb: "status", name, payload: {} }),
+      });
+      assert.equal(status.status, 200);
+      assert.equal((await status.json()).state, state);
+    }
+
     const wrong = await new SignJWT({ email: "operator@example.test" })
       .setProtectedHeader({ alg: "RS256", kid: "test-key" })
       .setIssuer(issuer)
