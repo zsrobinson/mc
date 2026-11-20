@@ -28,15 +28,21 @@ export function HistoryCharts({
       ? format(Number(value))
       : undefined;
   };
-  const traffic = [
-    ...new Map(
-      (history.data?.series.requests ?? []).flatMap((s) =>
-        s.values.map(
-          ([time, v]) => [time, { time, requests: Number(v) }] as const,
-        ),
-      ),
-    ).values(),
-  ];
+  const traffic = history.data
+    ? historyPoints(
+        {
+          ...history.data,
+          series: {
+            requests: (history.data.series.requests ?? []).map((s) => ({
+              ...s,
+              metric: { server: "requests" },
+            })),
+          },
+        },
+        "requests",
+        ["requests"],
+      )
+    : [];
   return (
     <div className="grid min-w-0 gap-4">
       <div className="flex justify-end">
@@ -63,8 +69,16 @@ export function HistoryCharts({
         >
           {(
             [
-              ["mspt", "Tick time", (n: number) => `${n.toFixed(1)} ms`],
-              ["cpu", "CPU usage", (n: number) => `${n.toFixed(0)}%`],
+              [
+                "mspt",
+                "Tick time",
+                (n: number) => `${n.toFixed(n < 1 ? 3 : 1)} ms`,
+              ],
+              [
+                "cpu",
+                "CPU usage",
+                (n: number) => `${n.toFixed(n < 1 ? 2 : n < 10 ? 1 : 0)}%`,
+              ],
               [
                 "memory",
                 "Memory usage",
