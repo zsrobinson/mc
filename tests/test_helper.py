@@ -6,6 +6,9 @@ os.environ.update(MC_ROOT=TMP.name+'/servers',MC_BACKUP_ROOT=TMP.name+'/backups'
 spec=importlib.util.spec_from_file_location('helper',Path(__file__).parents[1]/'helper.py');h=importlib.util.module_from_spec(spec);spec.loader.exec_module(h);h.ROOT.mkdir()
 class Safety(unittest.TestCase):
  def config(self):return dict(name='sample',version='1.21.1',memory=2048,port=28000,mods=[],datapacks=[],javaTag='java21')
+ def test_downgrade_refused(self):
+  with patch.object(h,'releases',return_value=[{'id':'1.21.1','type':'release','releaseTime':'2024-08-08'},{'id':'1.20.1','type':'release','releaseTime':'2023-06-12'}]):
+   with self.assertRaises(ValueError):h.no_downgrade('1.21.1','1.20.1')
  def test_path_escape(self):
   for n in ['../other','/tmp/other','other;id','other-name']:
    with self.assertRaises(ValueError):h.folder(n)

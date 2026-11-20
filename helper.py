@@ -33,6 +33,12 @@ def java(version):
  major=get_json(v['url'])['javaVersion']['majorVersion']
  if major not in [8,16,17,21,25]:raise ValueError('Java image needs operator review')
  return 'java'+str(major)
+def no_downgrade(current,target):
+ if current==target:return
+ versions={v['id']:v for v in releases() if v['type']=='release'}
+ if target not in versions or current not in versions:raise ValueError('Unknown release')
+ if versions[target]['releaseTime']<versions[current]['releaseTime']:raise ValueError('Downgrading a world is unsafe; restore a matching backup instead')
+
 def project_versions(project,version,kind='mod'):
  
  if not re.fullmatch('[a-zA-Z0-9_-]{1,80}',project):raise ValueError('Invalid project')
@@ -72,11 +78,26 @@ def compose(c):
  p=folder(c['name']);secret=p/'rcon.secret'
  if not secret.exists():secret.write_text(uuid.uuid4().hex);secret.chmod(0o600)
  # All paths and image tags come from validated config and operator-owned roots.
- env={'UID':'0','GID':'0','EULA':'TRUE','TYPE':'FABRIC','VERSION':c['version'],'MEMORY':str(c['memory'])+'M','INIT_MEMORY':'512M','USE_AIKAR_FLAGS':'TRUE','ENABLE_RCON':'TRUE','RCON_PASSWORD_FILE':'/run/secrets/rcon','RCON_PORT':'25575','ONLINE_MODE':'TRUE','MODRINTH_PROJECTS':','.join(c['mods']),'MODRINTH_DOWNLOAD_DEPENDENCIES':'required','MODRINTH_ALLOWED_VERSION_TYPE':'alpha','LEVEL':'world','MAX_PLAYERS':'20','VIEW_DISTANCE':'10','ENABLE_ROLLING_LOGS':'true'}
+ env={'UID':'0','GID':'0','EULA':'TRUE','TYPE':'FABRIC','VERSION':c['version'],'MEMORY':str(c['memory'])+'M','INIT_MEMORY':'512M','USE_AIKAR_FLAGS':'TRUE','REMOVE_OLD_MODS':'TRUE','ENABLE_RCON':'TRUE','RCON_PASSWORD_FILE':'/run/secrets/rcon','RCON_PORT':'25575','ONLINE_MODE':'TRUE','MODRINTH_PROJECTS':','.join(c['mods']),'MODRINTH_DOWNLOAD_DEPENDENCIES':'required','MODRINTH_ALLOWED_VERSION_TYPE':'alpha','LEVEL':'world','MAX_PLAYERS':'20','VIEW_DISTANCE':'10','ENABLE_ROLLING_LOGS':'true'}
  # Datapack URLs are selected server-side from Modrinth rather than accepting arbitrary URLs.
- urls=[]
+ urls=[];managed={}
  for item in c['datapacks']:
-  v=project_versions(item,c['version'],'datapack')[0];f=next((f for f in v['files'] if f['primary']),v['files'][0]);urls.append(f['url'])
+  v=project_versions(item,c['version'],'datapack')[0];f=next((f for f in v['files'] if f['primary']),v['files'][0]);
+  filename=f['filename']
+  if Path(filename).name!=filename:raise ValueError('Unsafe Modrinth filename')
+  managed[filename]=f['hashes']['sha512'];urls.append(f['url'])
+ manifest=p/'managed-datapacks.json';previous=json.loads(manifest.read_text()) if manifest.exists() else {}
+ packdir=p/'data/world/datapacks'
+ for filename,digest in previous.items():
+  dest=packdir/filename
+  if filename not in managed or managed[filename]!=digest:
+   if dest.exists():
+    with dest.open('rb') as stream:actual=hashlib.file_digest(stream,'sha512').hexdigest()
+    if actual!=digest:raise ValueError('Managed datapack changed locally; operator review required')
+    dest.unlink()
+ for filename in managed:
+  if (packdir/filename).exists() and filename not in previous:raise ValueError('Datapack filename conflicts with an unmanaged file')
+ atomic(manifest,managed)
  if urls:env['DATAPACKS']=','.join(urls)
  d={'name':'mc-'+c['name'],'services':{'server':{'image':'itzg/minecraft-server:'+c['javaTag'],'labels':{LABEL:'true','io.mc.name':c['name']},'restart':'unless-stopped','mem_limit':str(c['memory']+512)+'m','memswap_limit':str(c['memory']+512)+'m','cpus':float(os.environ.get('MC_CPUS','2')),'pids_limit':512,'ports':['0.0.0.0:'+str(c['port'])+':25565/tcp'],'environment':env,'volumes':[str(p/'data')+':/data',str(secret)+':/run/secrets/rcon:ro'],'networks':['game'],'logging':{'driver':'json-file','options':{'max-size':'10m','max-file':'3'}},'stop_grace_period':'120s'}},'networks':{'game':{}}}
  atomic(p/'compose.json',d)
@@ -108,7 +129,8 @@ def backup(name):
   if live:rcon(name,'save-off');rcon(name,'save-all flush')
   archive=stage/'world.tar.gz'
   with tarfile.open(archive,'w:gz',compresslevel=1) as t:
-   for part in ['data','config.json','compose.json','rcon.secret']:t.add(p/part,arcname=part,recursive=True)
+   for part in ['data','config.json','compose.json','rcon.secret','managed-datapacks.json']:
+    if (p/part).exists():t.add(p/part,arcname=part,recursive=True)
  finally:
   if live:rcon(name,'save-on')
  with archive.open('rb') as f:digest=hashlib.file_digest(f,'sha256').hexdigest()
@@ -159,7 +181,9 @@ def action(verb,name,payload):
   return status(c)
  c=read(name)
  if verb=='status':return status(c)
- if verb=='logs':return {'text':run(['docker','logs','--tail','200',container(name)['Id']],30)}
+ if verb=='logs':
+  logs=subprocess.run(['docker','logs','--tail','200',container(name)['Id']],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,timeout=30,check=True)
+  return {'text':logs.stdout.decode(errors='replace')}
  if verb in ['start','stop','restart']:
   args=['docker',verb]
   if verb in ['stop','restart']:args+=['--time','120']
@@ -167,11 +191,11 @@ def action(verb,name,payload):
  if verb=='rcon':return {'text':rcon(name,payload['command'])}
  if verb=='backup-now':return backup(name)
  if verb in ['check-upgrade','check-updates']:
-  target=payload.get('version',c['version']);j=java(target)
+  target=payload.get('version',c['version']);no_downgrade(c['version'],target);j=java(target)
   return {'version':target,'javaTag':j,'projects':check_projects(c,target)}
  if verb=='apply-config':
   if set(payload)-{'version','memory','mods','datapacks','port'}:raise ValueError('Unknown config keys')
-  updated={**c,**payload};updated['javaTag']=java(updated['version']);validate(updated)
+  updated={**c,**payload};no_downgrade(c['version'],updated['version']);updated['javaTag']=java(updated['version']);validate(updated)
   # Back up and verify both remote replicas before changing any config or image.
   backup(name);atomic(folder(name)/'config.json',updated);recreate(updated);return status(updated)
  if verb=='upload-datapack':

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 import { AppShell, type Service } from "@zsrobinson/shell";
 import { Button } from "@zsrobinson/shell/ui/button";
@@ -55,6 +55,8 @@ async function control(verb: string, name?: string, payload: unknown = {}) {
   return d;
 }
 function App() {
+  const consoleRef = useRef<HTMLPreElement>(null);
+
   const [servers, setServers] = useState<Server[] | null>(null),
     [session, setSession] = useState<{ email: string; services: Service[] }>(),
     [selected, setSelected] = useState<string>(),
@@ -77,6 +79,10 @@ function App() {
     [port, setPort] = useState(""),
     [limits, setLimits] = useState<Record<string, string>>({});
   const current = servers?.find((s) => s.name === selected);
+  useEffect(() => {
+    const el = consoleRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [logs]);
   const refresh = () => control("list").then(setServers);
   useEffect(() => {
     fetch("/api/session")
@@ -148,9 +154,17 @@ function App() {
         setCheck(undefined);
       }}
     >
-      {versions.map((v) => (
-        <option key={v}>{v}</option>
-      ))}
+      {versions
+        .filter(
+          (v, i) =>
+            dialog !== "upgrade" ||
+            !current ||
+            versions.indexOf(current.version) < 0 ||
+            i <= versions.indexOf(current.version),
+        )
+        .map((v) => (
+          <option key={v}>{v}</option>
+        ))}
     </select>
   );
   return (
@@ -354,7 +368,7 @@ function App() {
           )}
           {dialog === "console" && (
             <>
-              <pre className="console" tabIndex={0}>
+              <pre ref={consoleRef} className="console" tabIndex={0}>
                 {logs || "Waiting for server output…"}
               </pre>
               <form
