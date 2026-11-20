@@ -11,7 +11,7 @@
     "@fontsource-variable/geist": "^5.2.0",
     "@hono/node-server": "^1.19.0",
     "@tailwindcss/vite": "^4.1.0",
-    "@zsrobinson/shell": "git+https://github.com/zsrobinson/shell.git#0a290070e2e89186b3344532ac4552ccb055cf3c",
+    "@zsrobinson/shell": "git+https://github.com/zsrobinson/shell.git#1395f5ec1d535054f5ed40b105452faf09fe91f4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "hono": "^4.10.0",
