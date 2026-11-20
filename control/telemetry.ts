@@ -27,6 +27,16 @@ export async function metadata(
     safe.verb = values.verb;
   if (values.outcome === "ok" || values.outcome === "error")
     safe.outcome = values.outcome;
+  if (
+    typeof values.method === "string" &&
+    /^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS|OTHER)$/.test(values.method)
+  )
+    safe.method = values.method;
+  if (
+    typeof values.route === "string" &&
+    /^[A-Za-z0-9_/:.*-]{1,200}$/.test(values.route)
+  )
+    safe.route = values.route;
   const labels: Record<string, string> = {
     service_name: "minecraft",
     component,

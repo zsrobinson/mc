@@ -23,7 +23,11 @@ import {
 import { isRunning } from "@/lib/state";
 import type { Server } from "@/lib/types";
 import { Address } from "./address";
-import { DetailList, DetailRow, Unavailable } from "./detail-list";
+import {
+  DetailList,
+  DetailRow,
+  Unavailable,
+} from "@zsrobinson/shell/blocks/detail-list";
 import { DnsBadge } from "./dns/dns-badge";
 import { FixDnsButton } from "./dns/fix-dns-button";
 import { needsFix, useServerDns } from "./dns/use-server-dns";
@@ -219,7 +223,7 @@ export function SoftwareCard({ server }: { server: Server }) {
           {server.fabricLoader ?? <Unavailable>Not reported</Unavailable>}
         </DetailRow>
         <DetailRow label="Java image">
-          <span className="font-mono text-[0.8125rem]">{server.javaTag}</span>
+          <span className="font-mono text-code">{server.javaTag}</span>
         </DetailRow>
         <DetailRow label="Content">
           {pluralize(server.mods.length, "mod")},{" "}

@@ -21,7 +21,7 @@ import { formatMiB } from "@/lib/format";
 import { useControlMutation } from "@/lib/mutations";
 import { limitsQuery, serversQuery } from "@/lib/queries";
 import type { Server } from "@/lib/types";
-import { ConfirmAction } from "../confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 
 export function ResourcesCard({ server }: { server: Server }) {
   const limits = useQuery(limitsQuery);

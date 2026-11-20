@@ -3,7 +3,7 @@ import { Button } from "@zsrobinson/shell/ui/button";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
 import { Textarea } from "@zsrobinson/shell/ui/textarea";
 
-import { ConfirmAction } from "../confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 import { useApplyProperties } from "./use-apply-properties";
 
 export function RawProperties({

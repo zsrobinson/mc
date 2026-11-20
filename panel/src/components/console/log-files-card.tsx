@@ -20,7 +20,7 @@ import {
 import { downloadUrl } from "@/lib/api";
 import { formatBytes, formatDateTime } from "@/lib/format";
 import { logFilesQuery } from "@/lib/queries";
-import { QueryError } from "../query-error";
+import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 
 export function LogFilesCard({ name }: { name: string }) {
   const files = useQuery(logFilesQuery(name));

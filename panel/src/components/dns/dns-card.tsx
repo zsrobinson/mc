@@ -9,7 +9,11 @@ import {
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
 
 import type { Server } from "@/lib/types";
-import { DetailList, DetailRow, Unavailable } from "../detail-list";
+import {
+  DetailList,
+  DetailRow,
+  Unavailable,
+} from "@zsrobinson/shell/blocks/detail-list";
 import { DnsBadge } from "./dns-badge";
 import { FixDnsButton } from "./fix-dns-button";
 import { needsFix, useServerDns } from "./use-server-dns";
@@ -39,7 +43,7 @@ export function DnsCard({ server }: { server: Server }) {
         <DetailList>
           <DetailRow label="SRV record">
             {dns ? (
-              <span className="truncate font-mono text-[0.8125rem]">
+              <span className="truncate font-mono text-code">
                 {dns.recordName}
               </span>
             ) : (

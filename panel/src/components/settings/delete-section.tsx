@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@zsrobinson/shell/ui/button";
 
 import { useControlMutation } from "@/lib/mutations";
-import { ConfirmAction } from "../confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 
 export function DeleteSection({ name }: { name: string }) {
   const navigate = useNavigate();

@@ -14,7 +14,7 @@ import {
 } from "@zsrobinson/shell/ui/tabs";
 
 import { propertiesQuery } from "@/lib/queries";
-import { QueryError } from "../query-error";
+import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 import { PropertiesForm } from "./properties-form";
 import { RawProperties } from "./raw-properties";
 

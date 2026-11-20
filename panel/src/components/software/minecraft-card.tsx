@@ -24,8 +24,8 @@ import { Spinner } from "@zsrobinson/shell/ui/spinner";
 import { useControlMutation } from "@/lib/mutations";
 import { upgradeCheckQuery, versionsQuery } from "@/lib/queries";
 import type { Server } from "@/lib/types";
-import { ConfirmAction } from "../confirm-action";
-import { QueryError } from "../query-error";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
+import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 import { CompatibilityList } from "./compatibility-list";
 
 /** Versions are newest first; only those above the current one are offered. */

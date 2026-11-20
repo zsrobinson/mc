@@ -16,7 +16,7 @@ import {
   EmptyTitle,
 } from "@zsrobinson/shell/ui/empty";
 
-import { QueryError } from "@/components/query-error";
+import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 import { ServerList, ServerListSkeleton } from "@/components/server-list";
 import { allocatedMiB } from "@/lib/budget";
 import { formatMiB, pluralize } from "@/lib/format";

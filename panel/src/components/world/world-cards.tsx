@@ -21,10 +21,14 @@ import { formatBytes, formatDateTime, formatRelative } from "@/lib/format";
 import { worldInfoQuery } from "@/lib/queries";
 import { useControlMutation } from "@/lib/mutations";
 import { MAX_UPLOAD_BYTES, useUpload } from "@/lib/use-upload";
-import { ConfirmAction } from "../confirm-action";
-import { DetailList, DetailRow, Unavailable } from "../detail-list";
-import { FileDrop } from "../file-drop";
-import { UploadProgress } from "../upload-progress";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
+import {
+  DetailList,
+  DetailRow,
+  Unavailable,
+} from "@zsrobinson/shell/blocks/detail-list";
+import { FileDrop } from "@zsrobinson/shell/blocks/file-drop";
+import { UploadProgress } from "@zsrobinson/shell/blocks/upload-progress";
 
 export function DownloadWorldCard({ name }: { name: string }) {
   const info = useQuery(worldInfoQuery(name));

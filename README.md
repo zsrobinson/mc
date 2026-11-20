@@ -93,3 +93,11 @@ a local API), `npm run typecheck`, `npm run lint`, `npm run format:check`,
 Node 24, Python 3.11+. `npm ci && npm run build`, then
 `python3 -m unittest discover -s tests -v`. The Vite API proxy uses `API_PORT`.
 There is no authentication bypass in the production server.
+
+## Updating the shared shell
+
+Run `npm run shell:update` to pin the latest shell main commit and refresh the
+lockfile. Review both files, run `npm run typecheck`, `npm run lint`,
+`npm run format:check`, `npm run build` and the backend checks from CI, then
+commit and deploy. Shared blocks and the Access/session/static/observability
+server boundary live in shell; keep only Minecraft behavior in this app.

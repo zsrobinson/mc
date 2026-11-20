@@ -25,7 +25,7 @@ import { Spinner } from "@zsrobinson/shell/ui/spinner";
 import { useControlMutation } from "@/lib/mutations";
 import { loaderVersionsQuery } from "@/lib/queries";
 import type { Server } from "@/lib/types";
-import { ConfirmAction } from "../confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 
 const LOADER_VERSION = /^\d+\.\d+\.\d+$/;
 

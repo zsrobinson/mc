@@ -3,61 +3,38 @@ import { metadata } from "./control/telemetry";
 import { helperResponse } from "./web/helper-client";
 import { bodyLimit } from "hono/body-limit";
 import { request } from "node:http";
-import { Hono } from "hono";
-import { serve } from "@hono/node-server";
-import { serveStatic } from "@hono/node-server/serve-static";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import {
+  createShellServer,
+  mountStatic,
+  serve,
+} from "@zsrobinson/shell/server";
 import { readFileSync } from "node:fs";
 const required = (key: string) => {
   const v = process.env[key];
   if (!v) throw Error(`Missing ${key}`);
   return v;
 };
-const issuer = required("ACCESS_ISSUER");
-const audience = required("ACCESS_AUD");
-const keys = createRemoteJWKSet(new URL("/cdn-cgi/access/certs", issuer));
-const app = new Hono<{ Variables: { email: string } }>();
-app.use("*", async (c, next) => {
-  const started = Date.now();
-  await next();
-  void metadata("panel", "http", {
-    status: c.res.status,
-    durationMs: Date.now() - started,
-    outcome: c.res.status < 400 ? "ok" : "error",
-  });
+const app = createShellServer({
+  issuer: required("ACCESS_ISSUER"),
+  audience: required("ACCESS_AUD"),
+  publicOrigin: required("PUBLIC_ORIGIN"),
+  services: () =>
+    JSON.parse(readFileSync(required("SERVICE_MANIFEST"), "utf8")),
+  log: (request) => {
+    console.log(JSON.stringify(request));
+    void metadata("panel", "http", {
+      ...request,
+      outcome: request.status < 400 ? "ok" : "error",
+    });
+  },
+  // A separate scrape token never grants access to app routes.
+  metrics: {
+    authorize: (request) =>
+      Boolean(process.env.METRICS_TOKEN) &&
+      request.headers.get("Authorization") ===
+        `Bearer ${process.env.METRICS_TOKEN}`,
+  },
 });
-app.use("*", async (c, next) => {
-  c.header("X-Content-Type-Options", "nosniff");
-  c.header("Referrer-Policy", "same-origin");
-  c.header(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
-  );
-  try {
-    const { payload } = await jwtVerify(
-      c.req.header("Cf-Access-Jwt-Assertion") || "",
-      keys,
-      { issuer, audience },
-    );
-    if (typeof payload.email !== "string")
-      return c.json({ error: "Access email required" }, 401);
-    c.set("email", payload.email);
-  } catch {
-    return c.json({ error: "Cloudflare Access authentication required" }, 401);
-  }
-  if (
-    !["GET", "HEAD"].includes(c.req.method) &&
-    c.req.header("Origin") !== required("PUBLIC_ORIGIN")
-  )
-    return c.json({ error: "Origin rejected" }, 403);
-  await next();
-});
-app.get("/api/session", (c) =>
-  c.json({
-    email: c.get("email"),
-    services: JSON.parse(readFileSync(required("SERVICE_MANIFEST"), "utf8")),
-  }),
-);
 app.get("/api/modrinth-icon/:project", async (c) => {
   try {
     const icon = await modrinthIcon(c.req.param("project"));
@@ -171,12 +148,7 @@ app.post("/api/control", async (c) => {
     return c.json({ error: "Control service unavailable" }, 502);
   }
 });
-app.use("/assets/*", async (c, next) => {
-  c.header("Cache-Control", "public, max-age=31536000, immutable");
-  await next();
-});
-app.use("*", serveStatic({ root: "./dist" }));
-app.get("*", serveStatic({ path: "./dist/index.html" }));
+mountStatic(app);
 serve({
   fetch: app.fetch,
   hostname: process.env.BIND_ADDRESS || "127.0.0.1",

@@ -18,7 +18,7 @@ import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
 
 import { BackupsTable } from "@/components/backups/backups-table";
-import { QueryError } from "@/components/query-error";
+import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 import { pluralize } from "@/lib/format";
 import { useControlMutation } from "@/lib/mutations";
 import { backupsQuery } from "@/lib/queries";

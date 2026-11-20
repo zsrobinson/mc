@@ -9,7 +9,7 @@ import {
   OperatorsCard,
   WhitelistCard,
 } from "@/components/players/player-cards";
-import { QueryError } from "@/components/query-error";
+import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 import { playersQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/servers/$name/players")({
