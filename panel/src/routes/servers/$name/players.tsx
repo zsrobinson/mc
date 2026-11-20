@@ -34,8 +34,8 @@ function PlayersPage() {
               <Skeleton className="h-5 w-24" />
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-11 sm:h-9 w-full" />
+              <Skeleton className="h-11 sm:h-9 w-full" />
             </CardContent>
           </Card>
         ))}

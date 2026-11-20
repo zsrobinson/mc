@@ -1,3 +1,4 @@
+import { CardFooter } from "@zsrobinson/shell/ui/card";
 import { useState } from "react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
@@ -29,12 +30,12 @@ export function RawProperties({
       <p className="text-sm text-muted-foreground">
         The RCON password is hidden and cannot be changed here.
       </p>
-      <div className="flex gap-2">
+      <CardFooter className="flex gap-2 px-0 pt-4">
         <ConfirmAction
           trigger={
             <Button disabled={!dirty || apply.isPending}>
               {apply.isPending ? <Spinner data-icon="inline-start" /> : null}
-              Apply file
+              Save
             </Button>
           }
           title="Apply server.properties and restart?"
@@ -50,7 +51,7 @@ export function RawProperties({
         >
           Reset
         </Button>
-      </div>
+      </CardFooter>
     </div>
   );
 }

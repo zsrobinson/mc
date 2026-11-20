@@ -32,7 +32,13 @@ const toValue = (value: Slot) => (value.on ? value.time : null);
  * Restart: off or a daily UTC time. Backup: inherit the shared nightly job
  * (null) or run at this server's own time instead, never both.
  */
-export function ScheduleCard({ server }: { server: Server }) {
+export function ScheduleCard({
+  server,
+  kind = "restart",
+}: {
+  server: Server;
+  kind?: "restart" | "backup";
+}) {
   const nightly =
     server.effectiveSchedule?.backupSource === "global"
       ? (server.effectiveSchedule.backupAt ?? null)
@@ -55,36 +61,51 @@ export function ScheduleCard({ server }: { server: Server }) {
   );
 
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
-        <CardTitle>Schedule</CardTitle>
+        <CardTitle>
+          {kind === "restart" ? "Daily restart" : "Backup schedule"}
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col divide-y">
-        <ScheduleRow
-          label="Daily restart"
-          offText="Off"
-          value={restart}
-          onChange={setRestart}
-        />
-        <ScheduleRow
-          label="Own backup time"
-          offText={
-            nightly
-              ? `Nightly default, ${describeUtcTime(nightly)}`
-              : "Nightly default"
-          }
-          value={backup}
-          onChange={setBackup}
-        />
+        {kind === "restart" ? (
+          <ScheduleRow
+            label="Daily restart"
+            offText="Off"
+            value={restart}
+            onChange={setRestart}
+          />
+        ) : null}
+        {kind === "backup" ? (
+          <ScheduleRow
+            label="Own backup time"
+            offText={
+              nightly
+                ? `Nightly default, ${describeUtcTime(nightly)}`
+                : "Nightly default"
+            }
+            value={backup}
+            onChange={setBackup}
+          />
+        ) : null}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="gap-2">
         <Button
-          variant="outline"
           disabled={!dirty || !valid || save.isPending}
           onClick={() => save.mutate(next)}
         >
           {save.isPending ? <Spinner data-icon="inline-start" /> : null}
-          Save schedule
+          Save
+        </Button>
+        <Button
+          variant="ghost"
+          disabled={!dirty || save.isPending}
+          onClick={() => {
+            setRestart(slot(server.schedule?.restartAt, "05:00"));
+            setBackup(slot(server.schedule?.backupAt, nightly ?? "04:30"));
+          }}
+        >
+          Reset
         </Button>
       </CardFooter>
     </Card>

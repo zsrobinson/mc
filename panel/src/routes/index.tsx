@@ -37,7 +37,14 @@ function ServersPage() {
     <Page>
       <PageHeader>
         <div className="flex flex-col gap-1">
-          <PageTitle>Servers</PageTitle>
+          <PageTitle>
+            Servers{" "}
+            {servers.data ? (
+              <span className="ml-1 text-base font-normal text-muted-foreground">
+                {servers.data.length}
+              </span>
+            ) : null}
+          </PageTitle>
           {servers.data ? (
             <PageMeta>
               <span>

@@ -3,7 +3,6 @@ import { useId, useState } from "react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardFooter,
   CardHeader,
@@ -55,16 +54,18 @@ export function LoaderCard({ server }: { server: Server }) {
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>Fabric loader</CardTitle>
-        <CardAction className="text-sm font-medium tabular-nums">
-          {server.fabricLoader ?? (
-            <span className="text-muted-foreground">Not reported</span>
-          )}
-        </CardAction>
+        <CardTitle>
+          Fabric loader{" "}
+          <span className="ml-1 font-normal text-muted-foreground">
+            {server.fabricLoader ?? (
+              <span className="text-muted-foreground">Not reported</span>
+            )}
+          </span>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {loaders.isPending ? (
-          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-11 sm:h-9 w-full" />
         ) : manual ? (
           <Field>
             <FieldLabel htmlFor={selectId}>Loader version</FieldLabel>

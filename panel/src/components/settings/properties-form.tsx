@@ -1,3 +1,4 @@
+import { CardFooter } from "@zsrobinson/shell/ui/card";
 import { useState } from "react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
@@ -50,8 +51,8 @@ export function PropertiesForm({
   const switches = fields.filter((field) => field.type === "switch");
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
         {text.map((field) => (
           <PropertyInput
             key={field.key}
@@ -80,14 +81,14 @@ export function PropertiesForm({
           </Field>
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <CardFooter className="flex flex-wrap items-center gap-2 px-0 pt-4">
         <ConfirmAction
           trigger={
             <Button
               disabled={changed.length === 0 || invalid || apply.isPending}
             >
               {apply.isPending ? <Spinner data-icon="inline-start" /> : null}
-              Apply changes
+              Save
             </Button>
           }
           title="Apply and restart?"
@@ -116,7 +117,7 @@ export function PropertiesForm({
             {changed.length} unsaved
           </span>
         ) : null}
-      </div>
+      </CardFooter>
     </div>
   );
 }

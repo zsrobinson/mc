@@ -35,6 +35,15 @@ const app = createShellServer({
         `Bearer ${process.env.METRICS_TOKEN}`,
   },
 });
+app.get("/api/player-head/:name", async c => {
+  const name=c.req.param("name");
+  if(!/^[A-Za-z0-9_]{1,16}$/.test(name))return c.body(null,400);
+  try { const response=await fetch(`https://mc-heads.net/avatar/${encodeURIComponent(name)}/32`,{signal:AbortSignal.timeout(5000)});
+    if(!response.ok)return c.body(null,404);
+    const bytes=await response.arrayBuffer();if(bytes.byteLength>1024*1024)return c.body(null,502);
+    return c.body(bytes,200,{"Content-Type":"image/png","Cache-Control":"private, max-age=3600"});
+  }catch{return c.body(null,502)}
+});
 app.get("/api/modrinth-icon/:project", async (c) => {
   try {
     const icon = await modrinthIcon(c.req.param("project"));

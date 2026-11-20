@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import {
   Field,
   FieldDescription,
@@ -11,7 +10,6 @@ import {
   NativeSelectOption,
 } from "@zsrobinson/shell/ui/native-select";
 
-import { versionsQuery } from "@/lib/queries";
 import type { Limits, Server } from "@/lib/types";
 
 /** Empty strings mean "let the control service decide". */
@@ -101,33 +99,11 @@ export function AdvancedFields({
   disabled: boolean;
   memoryHint?: string;
 }) {
-  const versions = useQuery(versionsQuery);
   const set = (key: keyof Advanced) => (next: string) =>
     onChange({ ...value, [key]: next });
 
   return (
     <div id={id} className="grid gap-4 sm:grid-cols-2">
-      <Field>
-        <FieldLabel htmlFor="server-version">Minecraft version</FieldLabel>
-        <NativeSelect
-          id="server-version"
-          className="w-full"
-          disabled={disabled || !versions.data}
-          value={value.version}
-          onChange={(event) => set("version")(event.target.value)}
-        >
-          <NativeSelectOption value="">
-            {versions.data?.[0]
-              ? `Newest (${versions.data[0]})`
-              : "Newest release"}
-          </NativeSelectOption>
-          {versions.data?.slice(1).map((version) => (
-            <NativeSelectOption key={version} value={version}>
-              {version}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-      </Field>
       <Field>
         <FieldLabel htmlFor="server-seed">Seed</FieldLabel>
         <Input

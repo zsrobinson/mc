@@ -52,7 +52,7 @@ export function IconCard({ name }: { name: string }) {
   const current = `${downloadUrl("download-file", name, { path: "server-icon.png" })}&v=${version}`;
 
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <CardTitle>Server icon</CardTitle>
       </CardHeader>
@@ -95,9 +95,8 @@ export function IconCard({ name }: { name: string }) {
           </p>
         </div>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="gap-2">
         <Button
-          variant="outline"
           disabled={!file || upload.isPending}
           onClick={async () => {
             try {
@@ -116,7 +115,14 @@ export function IconCard({ name }: { name: string }) {
           }}
         >
           {upload.isPending ? <Spinner data-icon="inline-start" /> : null}
-          Upload icon
+          Save
+        </Button>
+        <Button
+          variant="ghost"
+          disabled={!file || upload.isPending}
+          onClick={() => void choose(null)}
+        >
+          Reset
         </Button>
       </CardFooter>
     </Card>

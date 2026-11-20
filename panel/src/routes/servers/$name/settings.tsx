@@ -1,7 +1,6 @@
-import { PageGrid, PageStack, SectionGroup } from "@zsrobinson/shell";
+import { PageStack } from "@zsrobinson/shell";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { DnsCard } from "@/components/dns/dns-card";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { IconCard } from "@/components/settings/icon-card";
 import { PropertiesCard } from "@/components/settings/properties-card";
@@ -24,13 +23,10 @@ function SettingsPage() {
   const { data: server } = useServer(name);
 
   return (
-    <PageGrid layout="wide">
-      <PageStack>
-        <PropertiesCard name={name} />
-        {server ? <DangerZone server={server} /> : null}
-      </PageStack>
+    <PageStack>
+      <PropertiesCard name={name} />
       {server ? (
-        <SectionGroup>
+        <>
           <ResourcesCard
             key={`${server.memory}:${server.port}`}
             server={server}
@@ -38,11 +34,12 @@ function SettingsPage() {
           <ScheduleCard
             key={`${server.schedule?.restartAt}:${server.schedule?.backupAt}`}
             server={server}
+            kind="restart"
           />
-          <DnsCard server={server} />
           <IconCard name={name} />
-        </SectionGroup>
+          <DangerZone server={server} />
+        </>
       ) : null}
-    </PageGrid>
+    </PageStack>
   );
 }

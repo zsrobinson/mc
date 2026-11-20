@@ -22,9 +22,9 @@ export function PropertiesCard({ name }: { name: string }) {
   const properties = useQuery(propertiesQuery(name));
 
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
-        <CardTitle>Game settings</CardTitle>
+        <CardTitle>Game</CardTitle>
       </CardHeader>
       <CardContent>
         {properties.isPending ? (

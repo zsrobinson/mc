@@ -82,7 +82,7 @@ export function FileBrowser({ name, path }: { name: string; path: string }) {
   }
 
   return (
-    <Card size="sm" className="gap-3">
+    <Card>
       <CardHeader className="items-center">
         <div className="flex min-h-8 items-center">
           <PathCrumbs name={name} path={path} />
@@ -119,7 +119,7 @@ export function FileBrowser({ name, path }: { name: string; path: string }) {
         {listing.isPending ? (
           <div className="flex flex-col gap-2 px-4">
             {[0, 1, 2, 3].map((key) => (
-              <Skeleton key={key} className="h-9 w-full" />
+              <Skeleton key={key} className="w-full" />
             ))}
           </div>
         ) : listing.isError ? (
@@ -138,12 +138,10 @@ export function FileBrowser({ name, path }: { name: string; path: string }) {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-9 pl-4">Name</TableHead>
-                <TableHead className="h-9 text-right max-sm:hidden">
-                  Size
-                </TableHead>
-                <TableHead className="h-9 max-md:hidden">Modified</TableHead>
-                <TableHead className="h-9 w-24 pr-4">
+                <TableHead className="pl-4">Name</TableHead>
+                <TableHead className="text-right max-sm:hidden">Size</TableHead>
+                <TableHead className="max-md:hidden">Modified</TableHead>
+                <TableHead className="w-24 pr-4">
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>

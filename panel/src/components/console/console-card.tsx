@@ -94,10 +94,10 @@ export function ConsoleCard({ name }: { name: string }) {
   }
 
   return (
-    <Card size="sm">
+    <Card className="flex h-[calc(100dvh-9rem)] min-h-0 flex-1 flex-col">
       <CardHeader>
         <CardTitle>Console</CardTitle>
-        <CardAction className="flex items-center gap-3">
+        <CardAction className="flex items-center gap-2">
           <ConnectionStatus query={logs} streaming={streaming} />
           <label className="flex items-center gap-2 text-xs text-muted-foreground max-sm:hidden">
             <Switch
@@ -108,7 +108,7 @@ export function ConsoleCard({ name }: { name: string }) {
             RCON lines
           </label>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             render={
               <a
@@ -123,9 +123,9 @@ export function ConsoleCard({ name }: { name: string }) {
           </Button>
         </CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className="relative flex min-h-0 flex-1 flex-col before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:z-10 before:h-4 before:bg-linear-to-b before:from-card before:to-transparent">
         {logs.isPending ? (
-          <div className="flex h-[55vh] min-h-72 flex-col gap-2 rounded-2xl bg-muted/50 p-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-2 rounded-2xl bg-muted/50 p-4">
             {[90, 75, 82, 60, 70].map((width) => (
               <Skeleton
                 key={width}
@@ -148,7 +148,7 @@ export function ConsoleCard({ name }: { name: string }) {
                   element.clientHeight <
                 32;
             }}
-            className="h-[55vh] min-h-72 overflow-auto rounded-2xl bg-muted/50 p-4 font-mono text-xs leading-5 whitespace-pre-wrap break-words outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+            className="min-h-0 flex-1 overflow-auto rounded-2xl bg-muted/50 p-4 font-mono text-xs leading-5 whitespace-pre-wrap break-words outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
           >
             {output || (
               <span className="text-muted-foreground">No output yet</span>
@@ -162,7 +162,7 @@ export function ConsoleCard({ name }: { name: string }) {
           </pre>
         )}
       </CardContent>
-      <CardFooter>
+      <CardFooter className="shrink-0">
         <form
           className="w-full"
           onSubmit={(event) => {

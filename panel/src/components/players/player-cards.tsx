@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
@@ -11,11 +12,7 @@ import { Field, FieldLabel } from "@zsrobinson/shell/ui/field";
 import { Input } from "@zsrobinson/shell/ui/input";
 import { ItemGroup } from "@zsrobinson/shell/ui/item";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
-import { Switch } from "@zsrobinson/shell/ui/switch";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@zsrobinson/shell/ui/toggle-group";
+import { Tabs, TabsList, TabsTrigger } from "@zsrobinson/shell/ui/tabs";
 
 import type { Players } from "@/lib/types";
 import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
@@ -26,13 +23,29 @@ import { IP_ADDRESS, PLAYER_NAME, usePlayerAction } from "./use-player-action";
 type CardProps = { name: string; players: Players };
 
 export function OnlineCard({ name, players }: CardProps) {
+  const queryClient = useQueryClient();
   const action = usePlayerAction(name);
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
-        <CardTitle>Online</CardTitle>
-        <CardAction className="text-sm text-muted-foreground tabular-nums">
-          {players.online.length}
+        <CardTitle>
+          Online{" "}
+          <span className="ml-1 font-normal text-muted-foreground">
+            {players.online.length}
+          </span>
+        </CardTitle>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              void queryClient.invalidateQueries({
+                queryKey: ["server", name, "players"],
+              })
+            }
+          >
+            Refresh
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
@@ -62,25 +75,32 @@ export function OnlineCard({ name, players }: CardProps) {
 
 export function WhitelistCard({ name, players }: CardProps) {
   const action = usePlayerAction(name);
-  const switchId = useId();
   const toggling =
     action.isPendingFor("whitelist-on") || action.isPendingFor("whitelist-off");
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
-        <CardTitle>Whitelist</CardTitle>
-        <CardAction className="flex items-center gap-2">
-          <label htmlFor={switchId} className="text-sm text-muted-foreground">
-            {players.whitelistEnabled ? "On" : "Off"}
-          </label>
-          <Switch
-            id={switchId}
-            checked={players.whitelistEnabled}
+        <CardTitle>
+          Whitelist{" "}
+          <span className="ml-1 font-normal text-muted-foreground">
+            {players.whitelist.length}
+          </span>
+        </CardTitle>
+        <CardAction>
+          <Button
+            size="sm"
+            variant="ghost"
             disabled={toggling}
-            onCheckedChange={(on) =>
-              action.mutate({ action: on ? "whitelist-on" : "whitelist-off" })
+            onClick={() =>
+              action.mutate({
+                action: players.whitelistEnabled
+                  ? "whitelist-off"
+                  : "whitelist-on",
+              })
             }
-          />
+          >
+            {players.whitelistEnabled ? "Disable" : "Enable"}
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
@@ -128,7 +148,7 @@ export function WhitelistCard({ name, players }: CardProps) {
 export function OperatorsCard({ name, players }: CardProps) {
   const action = usePlayerAction(name);
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <CardTitle>Operators</CardTitle>
       </CardHeader>
@@ -180,25 +200,24 @@ export function BansCard({ name, players }: CardProps) {
   );
 
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <CardTitle>Bans</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
-          <ToggleGroup
-            variant="outline"
-            size="sm"
-            value={[kind]}
-            onValueChange={(value) => {
-              if (value[0]) setKind(value[0] as "player" | "ip");
+          <Tabs
+            value={kind}
+            onValueChange={(v) => {
+              setKind(v as "player" | "ip");
               setTarget("");
             }}
-            aria-label="Ban type"
           >
-            <ToggleGroupItem value="player">Player</ToggleGroupItem>
-            <ToggleGroupItem value="ip">IP address</ToggleGroupItem>
-          </ToggleGroup>
+            <TabsList>
+              <TabsTrigger value="player">Player</TabsTrigger>
+              <TabsTrigger value="ip">IP address</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field>
               <FieldLabel htmlFor={targetId}>

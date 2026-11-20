@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { SearchCard } from "./search-card";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@zsrobinson/shell/ui/badge";
 import { Button } from "@zsrobinson/shell/ui/button";
@@ -37,6 +39,7 @@ export function InstalledCard({
   server: Server;
   kind: ProjectKind;
 }) {
+  const [search, setSearch] = useState("");
   const key = configKey(kind);
   const installed = server[key];
   const details = useQuery(projectsQuery(server.name));
@@ -51,18 +54,30 @@ export function InstalledCard({
   const label = KIND_LABEL[kind];
 
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
-        <CardTitle>Installed {label.many.toLowerCase()}</CardTitle>
-        <CardAction className="text-sm text-muted-foreground tabular-nums">
-          {installed.length}
+        <CardTitle>
+          {label.many}{" "}
+          <span className="ml-1 font-normal text-muted-foreground">
+            {installed.length}
+          </span>
+        </CardTitle>
+        <CardAction className="w-40 max-sm:w-32">
+          <SearchCard
+            server={server}
+            kind={kind}
+            text={search}
+            onTextChange={setSearch}
+            part="input"
+          />
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
+        <SearchCard server={server} kind={kind} text={search} part="results" />
         {installed.length === 0 ? (
           <EmptyList>No {label.many.toLowerCase()} installed</EmptyList>
         ) : (
-          <ItemGroup className="gap-2">
+          <ItemGroup className="gap-0 [&>*+*]:border-t-border">
             {installed.map((slug) => (
               <ProjectRow
                 key={slug}
@@ -123,7 +138,7 @@ function ProjectRow({
 }) {
   const title = detail?.title ?? slug;
   return (
-    <Item size="sm" variant="muted" role="listitem">
+    <Item size="sm" className="min-h-14 rounded-none px-0 py-2" role="listitem">
       <ItemMedia>
         <ProjectIcon title={title} iconUrl={detail?.iconUrl} />
       </ItemMedia>

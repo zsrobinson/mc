@@ -13,7 +13,7 @@ import { RenameSection } from "./rename-section";
 /** Actions that change how players reach the server or remove it. */
 export function DangerZone({ server }: { server: Server }) {
   return (
-    <Card size="sm" className="ring-destructive/25 dark:ring-destructive/30">
+    <Card className="ring-destructive/25 dark:ring-destructive/30">
       <CardHeader>
         <CardTitle>Danger zone</CardTitle>
       </CardHeader>

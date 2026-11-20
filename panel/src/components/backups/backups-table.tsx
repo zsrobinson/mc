@@ -1,6 +1,7 @@
-import { DownloadIcon, RotateCcwIcon } from "lucide-react";
-import { Badge } from "@zsrobinson/shell/ui/badge";
+import { useState } from "react";
+import { DownloadIcon, EllipsisIcon, PinIcon } from "lucide-react";
 import { Button } from "@zsrobinson/shell/ui/button";
+import { Badge } from "@zsrobinson/shell/ui/badge";
 import {
   Table,
   TableBody,
@@ -9,7 +10,13 @@ import {
   TableHeader,
   TableRow,
 } from "@zsrobinson/shell/ui/table";
-
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@zsrobinson/shell/ui/dropdown-menu";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 import { downloadUrl } from "@/lib/api";
 import {
   formatBytes,
@@ -20,8 +27,6 @@ import {
 } from "@/lib/format";
 import { useControlMutation } from "@/lib/mutations";
 import type { Backup } from "@/lib/types";
-import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
-
 export function BackupsTable({
   name,
   backups,
@@ -29,124 +34,148 @@ export function BackupsTable({
   name: string;
   backups: Backup[];
 }) {
+  const [selected, setSelected] = useState<Backup | null>(null);
   const restore = useControlMutation<
     { snapshot: string; confirm: true; confirmName: string },
     unknown
   >("restore-backup", name, { success: "Backup restored" });
-  const sorted = backups.toSorted(
-    (a, b) => parseTime(b.createdAt) - parseTime(a.createdAt),
-  );
-
+  const pin = useControlMutation<
+    { snapshot: string; pinned: boolean },
+    unknown
+  >("pin-backup", name, { success: "Backup pin updated" });
   return (
-    <Table>
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <TableHead className="h-9 pl-4">Created</TableHead>
-          <TableHead className="h-9 text-right">Size</TableHead>
-          <TableHead className="h-9 max-sm:hidden">Stored on</TableHead>
-          <TableHead className="h-9 pr-4">
-            <span className="sr-only">Actions</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sorted.map((backup) => (
-          <TableRow key={backup.id}>
-            <TableCell className="pl-4">
-              <div className="flex flex-col">
-                <span className="font-medium">
-                  {formatDateTime(backup.createdAt)}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {formatRelative(backup.createdAt)}
-                  {backup.reason ? ` · ${backup.reason}` : null}
-                </span>
-              </div>
-            </TableCell>
-            <TableCell className="text-right tabular-nums">
-              {formatBytes(backup.bytes)}
-            </TableCell>
-            <TableCell className="max-sm:hidden">
-              <Locations backup={backup} />
-            </TableCell>
-            <TableCell className="pr-4">
-              <div className="flex justify-end gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Download backup"
-                  render={
-                    <a
-                      href={downloadUrl("download-backup", name, {
-                        snapshot: backup.id,
-                      })}
-                      download
-                    />
-                  }
-                  nativeButton={false}
-                >
-                  <DownloadIcon />
-                </Button>
-                <ConfirmAction
-                  trigger={
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      aria-label="Restore backup"
-                      className="max-sm:size-8 max-sm:px-0"
-                      disabled={restore.isPending}
-                    >
-                      <RotateCcwIcon className="sm:hidden" />
-                      <span className="max-sm:sr-only">Restore</span>
-                    </Button>
-                  }
-                  title="Restore this backup?"
-                  confirmLabel="Restore backup"
-                  destructive
-                  typedName={name}
-                  onConfirm={() =>
-                    restore.mutateAsync({
-                      snapshot: backup.id,
-                      confirm: true,
-                      confirmName: name,
-                    })
-                  }
-                >
-                  The server stops and its world and settings return to{" "}
-                  {formatDateTime(backup.createdAt)}. The current state is
-                  backed up first.
-                </ConfirmAction>
-              </div>
-            </TableCell>
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Created</TableHead>
+            <TableHead className="max-sm:hidden">Stored on</TableHead>
+            <TableHead className="text-right">Size</TableHead>
+            <TableHead>
+              <span className="sr-only">Actions</span>
+            </TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-}
-
-function Locations({ backup }: { backup: Backup }) {
-  return (
-    <div className="flex flex-wrap gap-1">
-      {backup.locations?.length ? (
-        backup.locations.map((location) => (
-          <Badge key={location} variant="outline">
-            {locationLabel(location)}
-          </Badge>
-        ))
-      ) : backup.replicated ? (
-        <Badge variant="outline">All destinations</Badge>
-      ) : (
-        <Badge variant="destructive">Primary only</Badge>
-      )}
-      {backup.pinned ? (
-        <Badge
-          variant="secondary"
-          title="Kept outside the normal retention schedule"
-        >
-          Pinned
-        </Badge>
-      ) : null}
-    </div>
+        </TableHeader>
+        <TableBody>
+          {backups
+            .toSorted((a, b) => parseTime(b.createdAt) - parseTime(a.createdAt))
+            .map((backup) => (
+              <TableRow key={backup.id}>
+                <TableCell className="w-full whitespace-normal">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">
+                      {formatDateTime(backup.createdAt)}
+                    </span>
+                    {backup.pinned ? (
+                      <PinIcon
+                        className="size-3 shrink-0"
+                        aria-label="Pinned"
+                      />
+                    ) : null}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatRelative(backup.createdAt)}
+                    {backup.reason ? ` · ${backup.reason}` : ""}
+                  </div>
+                </TableCell>
+                <TableCell className="max-sm:hidden">
+                  <div className="flex gap-1">
+                    {backup.locations?.length ? (
+                      backup.locations.map((l) => (
+                        <Badge key={l} variant="outline">
+                          {locationLabel(l)}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge variant="outline">
+                        {backup.replicated
+                          ? "All destinations"
+                          : "Primary only"}
+                      </Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right text-xs tabular-nums whitespace-nowrap">
+                  {formatBytes(backup.bytes)}
+                </TableCell>
+                <TableCell>
+                  <div className="flex">
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Download backup"
+                      render={
+                        <a
+                          href={downloadUrl("download-backup", name, {
+                            snapshot: backup.id,
+                          })}
+                          download
+                        />
+                      }
+                      nativeButton={false}
+                    >
+                      <DownloadIcon />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label="Backup actions"
+                          />
+                        }
+                      >
+                        <EllipsisIcon />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          disabled={restore.isPending}
+                          onClick={() => setSelected(backup)}
+                        >
+                          Restore
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={pin.isPending}
+                          onClick={() =>
+                            pin.mutate({
+                              snapshot: backup.id,
+                              pinned: !backup.pinned,
+                            })
+                          }
+                        >
+                          {backup.pinned ? "Unpin" : "Pin"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+        </TableBody>
+      </Table>
+      <ConfirmAction
+        open={!!selected}
+        onOpenChange={(v) => {
+          if (!v) setSelected(null);
+        }}
+        title="Restore this backup?"
+        confirmLabel="Restore backup"
+        destructive
+        typedName={name}
+        onConfirm={async () => {
+          if (selected)
+            await restore.mutateAsync({
+              snapshot: selected.id,
+              confirm: true,
+              confirmName: name,
+            });
+          setSelected(null);
+        }}
+      >
+        The current state is backed up first. The server stops and returns to{" "}
+        {selected ? formatDateTime(selected.createdAt) : "this snapshot"}.
+      </ConfirmAction>
+    </>
   );
 }

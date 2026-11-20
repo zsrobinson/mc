@@ -36,7 +36,7 @@ export function FileEditor({ name, path }: { name: string; path: string }) {
       />
     );
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <div className="flex min-h-8 min-w-0 items-center">
           <PathCrumbs name={name} path={path} />

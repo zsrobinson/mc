@@ -40,13 +40,10 @@ export function RenameSection({ server }: { server: Server }) {
       : serverNameError(newName, servers.data?.map((item) => item.name) ?? []);
 
   return (
-    <section className="flex flex-col gap-3" aria-labelledby={`${id}-title`}>
-      <h3 id={`${id}-title`} className="text-sm font-medium">
-        Rename server
-      </h3>
+    <section className="flex flex-col gap-3" aria-label="Rename server">
       <div>
         <Field data-invalid={error ? true : undefined}>
-          <FieldLabel htmlFor={id}>New name</FieldLabel>
+          <FieldLabel htmlFor={id}>Rename server</FieldLabel>
           <Input
             id={id}
             autoComplete="off"

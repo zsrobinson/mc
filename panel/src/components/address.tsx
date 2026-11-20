@@ -1,4 +1,4 @@
-import { cn } from "cn";
+import { cn } from "@zsrobinson/shell/lib/utils";
 
 import { CopyButton } from "@zsrobinson/shell/blocks/copy-button";
 
@@ -22,7 +22,7 @@ export function Address({
         className,
       )}
     >
-      <span className="truncate font-mono text-code select-all">{value}</span>
+      <span className="truncate font-mono text-xs select-all">{value}</span>
       <CopyButton value={value} label={`Copy ${label}`} />
     </span>
   );
