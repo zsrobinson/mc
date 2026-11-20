@@ -1,22 +1,14 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
+import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { AppShell } from "@zsrobinson/shell";
 import {
-  createRootRouteWithContext,
-  Outlet,
-  type ErrorComponentProps,
-} from "@tanstack/react-router";
-import { AppShell, Page } from "@zsrobinson/shell";
-import { Button } from "@zsrobinson/shell/ui/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@zsrobinson/shell/ui/empty";
+  SignedOut,
+  NotFound,
+  RouteError,
+} from "@zsrobinson/shell/blocks/page-states";
 
 import { AppBreadcrumbs } from "@/components/app-breadcrumbs";
-import { QueryError } from "@/components/query-error";
 import { ServerNav } from "@/components/server-nav";
 import { ApiError } from "@/lib/api";
 import { serversQuery, sessionQuery } from "@/lib/queries";
@@ -29,22 +21,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       void queryClient.prefetchQuery(serversQuery);
     },
     component: RootLayout,
-    notFoundComponent: NotFound,
+    notFoundComponent: () => <NotFound homeLabel="Go to servers" />,
     errorComponent: RouteError,
   },
 );
-
-function RouteError({ error, reset }: ErrorComponentProps) {
-  return (
-    <Page>
-      <QueryError
-        title="This page failed to load"
-        error={error}
-        onRetry={reset}
-      />
-    </Page>
-  );
-}
 
 function RootLayout() {
   const session = useQuery(sessionQuery);
@@ -61,38 +41,5 @@ function RootLayout() {
     >
       {signedOut ? <SignedOut /> : <Outlet />}
     </AppShell>
-  );
-}
-
-function SignedOut() {
-  return (
-    <Page>
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>Signed out</EmptyTitle>
-          <EmptyDescription>Your access session has ended.</EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <Button onClick={() => location.reload()}>Sign in again</Button>
-        </EmptyContent>
-      </Empty>
-    </Page>
-  );
-}
-
-function NotFound() {
-  return (
-    <Page>
-      <Empty>
-        <EmptyHeader>
-          <EmptyTitle>Page not found</EmptyTitle>
-        </EmptyHeader>
-        <EmptyContent>
-          <Button render={<a href="/" />} nativeButton={false}>
-            Go to servers
-          </Button>
-        </EmptyContent>
-      </Empty>
-    </Page>
   );
 }

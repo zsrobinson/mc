@@ -10,7 +10,7 @@ import { Button } from "@zsrobinson/shell/ui/button";
 import { usePowerAction } from "@/lib/mutations";
 import { isRunning } from "@/lib/state";
 import type { Limits, Server } from "@/lib/types";
-import { ConfirmAction } from "../confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 
 /** The host has no room for another server; offer to stop a running one. */
 export function BudgetFull({

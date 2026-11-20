@@ -1,6 +1,6 @@
 import { cn } from "cn";
 
-import { CopyButton } from "./copy-button";
+import { CopyButton } from "@zsrobinson/shell/blocks/copy-button";
 
 /** An address with a copy button. The join address is the one to share. */
 export function Address({
@@ -22,9 +22,7 @@ export function Address({
         className,
       )}
     >
-      <span className="truncate font-mono text-[0.8125rem] select-all">
-        {value}
-      </span>
+      <span className="truncate font-mono text-code select-all">{value}</span>
       <CopyButton value={value} label={`Copy ${label}`} />
     </span>
   );

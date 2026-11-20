@@ -15,7 +15,7 @@ import { useControlMutation } from "@/lib/mutations";
 import { serversQuery } from "@/lib/queries";
 import { MAX_NAME_LENGTH, serverNameError } from "@/lib/server-name";
 import type { Server } from "@/lib/types";
-import { ConfirmAction } from "../confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 
 export function RenameSection({ server }: { server: Server }) {
   const navigate = useNavigate();

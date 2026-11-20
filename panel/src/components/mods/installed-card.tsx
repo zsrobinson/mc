@@ -23,9 +23,9 @@ import { Spinner } from "@zsrobinson/shell/ui/spinner";
 
 import { projectsQuery, updatesQuery } from "@/lib/queries";
 import type { ProjectDetail, Server } from "@/lib/types";
-import { ConfirmAction } from "../confirm-action";
-import { EmptyList } from "../list-row";
-import { QueryError } from "../query-error";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
+import { EmptyList } from "@zsrobinson/shell/blocks/list-row";
+import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 import { configKey, KIND_LABEL, type ProjectKind } from "./kinds";
 import { ProjectIcon } from "./project-icon";
 import { useApplyProjects } from "./use-apply-projects";

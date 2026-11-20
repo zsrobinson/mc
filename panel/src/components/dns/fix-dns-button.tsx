@@ -3,7 +3,7 @@ import { Spinner } from "@zsrobinson/shell/ui/spinner";
 
 import { useControlMutation } from "@/lib/mutations";
 import type { ServerDns } from "@/lib/types";
-import { ConfirmAction } from "../confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 
 export function FixDnsButton({
   name,

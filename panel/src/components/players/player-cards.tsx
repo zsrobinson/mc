@@ -18,9 +18,9 @@ import {
 } from "@zsrobinson/shell/ui/toggle-group";
 
 import type { Players } from "@/lib/types";
-import { ConfirmAction } from "../confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 import { PlayerForm } from "./player-form";
-import { EmptyList, ListRow } from "../list-row";
+import { EmptyList, ListRow } from "@zsrobinson/shell/blocks/list-row";
 import { IP_ADDRESS, PLAYER_NAME, usePlayerAction } from "./use-player-action";
 
 type CardProps = { name: string; players: Players };

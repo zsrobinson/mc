@@ -19,7 +19,7 @@ import { downloadUrl } from "@/lib/api";
 import { useControlMutation } from "@/lib/mutations";
 import { fileQuery } from "@/lib/queries";
 import { isSecretPath } from "@/lib/secret-files";
-import { QueryError } from "../query-error";
+import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 import { PathCrumbs } from "./path-crumbs";
 import { parentOf } from "./file-browser";
 

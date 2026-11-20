@@ -33,9 +33,9 @@ import { filesQuery } from "@/lib/queries";
 import type { FileEntry } from "@/lib/types";
 import { isSecretPath } from "@/lib/secret-files";
 import { MAX_UPLOAD_BYTES, useUpload } from "@/lib/use-upload";
-import { ConfirmAction } from "../confirm-action";
-import { QueryError } from "../query-error";
-import { UploadProgress } from "../upload-progress";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
+import { QueryError } from "@zsrobinson/shell/blocks/query-error";
+import { UploadProgress } from "@zsrobinson/shell/blocks/upload-progress";
 import { PathCrumbs } from "./path-crumbs";
 
 const join = (dir: string, file: string) => (dir ? `${dir}/${file}` : file);

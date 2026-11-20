@@ -12,7 +12,7 @@ import { Address } from "@/components/address";
 import { DnsBadge } from "@/components/dns/dns-badge";
 import { needsFix, useServerDns } from "@/components/dns/use-server-dns";
 import { PowerActions } from "@/components/power-actions";
-import { QueryError } from "@/components/query-error";
+import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 import { ServerTabs } from "@/components/server-tabs";
 import { StateBadge } from "@/components/state-badge";
 import { parsePlayers } from "@/lib/format";

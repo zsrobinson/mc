@@ -11,7 +11,7 @@ import { Spinner } from "@zsrobinson/shell/ui/spinner";
 
 import { downloadUrl } from "@/lib/api";
 import { useUpload } from "@/lib/use-upload";
-import { FileDrop } from "../file-drop";
+import { FileDrop } from "@zsrobinson/shell/blocks/file-drop";
 
 const MAX_ICON_BYTES = 256 * 1024;
 

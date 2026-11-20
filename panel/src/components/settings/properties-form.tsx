@@ -15,7 +15,7 @@ import {
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
 import { Switch } from "@zsrobinson/shell/ui/switch";
 
-import { ConfirmAction } from "../confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 import {
   fieldError,
   PROPERTY_FIELDS,

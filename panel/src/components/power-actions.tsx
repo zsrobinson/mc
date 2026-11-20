@@ -18,7 +18,7 @@ import { Spinner } from "@zsrobinson/shell/ui/spinner";
 import { usePowerAction, type PowerAction } from "@/lib/mutations";
 import { stateTone } from "@/lib/state";
 import type { Server } from "@/lib/types";
-import { ConfirmAction } from "./confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 
 /** Start, or Restart and Stop; Kill sits in a secondary menu. */
 export function PowerActions({ server }: { server: Server }) {

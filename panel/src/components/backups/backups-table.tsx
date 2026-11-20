@@ -20,7 +20,7 @@ import {
 } from "@/lib/format";
 import { useControlMutation } from "@/lib/mutations";
 import type { Backup } from "@/lib/types";
-import { ConfirmAction } from "../confirm-action";
+import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 
 export function BackupsTable({
   name,
