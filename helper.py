@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """A deliberately small, authenticated control boundary for managed Minecraft worlds."""
+import socketserver, socket
 import base64, datetime as dt, fcntl, hashlib, hmac, io, json, os, re, shutil, subprocess, tarfile, threading, urllib.parse, urllib.request, uuid, zipfile
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -202,4 +203,12 @@ class Handler(BaseHTTPRequestHandler):
 if __name__=='__main__':
  os.umask(0o077);ROOT.mkdir(parents=True,exist_ok=True)
  if not any('rootless' in x for x in json.loads(run(['docker','info','--format','{{json .SecurityOptions}}']))):raise RuntimeError('Rootless Docker is required')
+ if os.environ.get('MC_HELPER_SOCKET'):
+  class UnixServer(socketserver.ThreadingMixIn,socketserver.UnixStreamServer):daemon_threads=True
+  path=Path(os.environ['MC_HELPER_SOCKET']);path.parent.mkdir(parents=True,exist_ok=True)
+  if path.exists():
+   if not path.is_socket():raise RuntimeError('Socket path is not a socket')
+   path.unlink()
+  server=UnixServer(str(path),Handler);path.chmod(0o600)
+  threading.Thread(target=server.serve_forever,daemon=True).start()
  ThreadingHTTPServer(('127.0.0.1',int(os.environ['MC_HELPER_PORT'])),Handler).serve_forever()

@@ -22,9 +22,10 @@ Container limits include an additional 512 MiB per world; the sum is enforced.
 Do not manually edit live configs while the helper is active.
 
 Supply panel variables: `ACCESS_ISSUER`, `ACCESS_AUD`, `PUBLIC_ORIGIN`, `PORT`,
-`HELPER_URL`, `HELPER_SECRET_FILE`, `SERVICE_MANIFEST`. Mount the helper secret
-read-only; never mount the Docker socket. Both listeners bind loopback. A shared
-host network is appropriate for rootless Docker and the host's tunnel connector.
+`HELPER_SOCKET`, `HELPER_SECRET_FILE`, `SERVICE_MANIFEST`. Mount the helper secret
+read-only; never mount the Docker socket. The helper binds loopback and optionally a Unix socket (`MC_HELPER_SOCKET`).
+Mount the socket directory into the panel. Set `BIND_ADDRESS` inside the container
+and publish the panel port on host loopback for the tunnel connector.
 The Access issuer must be your team's HTTPS origin. JWT signatures, audience,
 issuer and expiry are checked on every request, including assets. Mutations
 also check the exact browser Origin. Run behind an Access-protected reverse proxy.

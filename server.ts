@@ -1,3 +1,4 @@
+import { request } from "node:http";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
@@ -69,18 +70,39 @@ app.post("/api/control", async (c) => {
   try {
     if (Number(c.req.header("Content-Length") || 0) > 24 * 1024 * 1024)
       return c.json({ error: "Request too large" }, 413);
-    const r = await fetch(required("HELPER_URL"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization:
-          "Bearer " +
-          readFileSync(required("HELPER_SECRET_FILE"), "utf8").trim(),
+    const body = await c.req.text();
+    const result = await new Promise<{ status: number; body: string }>(
+      (resolve, reject) => {
+        const req = request(
+          {
+            socketPath: required("HELPER_SOCKET"),
+            path: "/",
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Content-Length": Buffer.byteLength(body),
+              Authorization:
+                "Bearer " +
+                readFileSync(required("HELPER_SECRET_FILE"), "utf8").trim(),
+            },
+          },
+          (res) => {
+            let data = "";
+            res.setEncoding("utf8");
+            res.on("data", (chunk) => (data += chunk));
+            res.on("end", () =>
+              resolve({ status: res.statusCode || 502, body: data }),
+            );
+          },
+        );
+        req.setTimeout(1_200_000, () =>
+          req.destroy(Error("Control request timed out")),
+        );
+        req.on("error", reject);
+        req.end(body);
       },
-      body: await c.req.text(),
-      signal: AbortSignal.timeout(1_200_000),
-    });
-    return c.json(await r.json(), r.status as 200);
+    );
+    return c.json(JSON.parse(result.body), result.status as 200);
   } catch {
     return c.json({ error: "Control service unavailable" }, 502);
   }
@@ -93,6 +115,6 @@ app.use("*", serveStatic({ root: "./dist" }));
 app.get("*", serveStatic({ path: "./dist/index.html" }));
 serve({
   fetch: app.fetch,
-  hostname: "127.0.0.1",
+  hostname: process.env.BIND_ADDRESS || "127.0.0.1",
   port: Number(required("PORT")),
 });
