@@ -63,7 +63,10 @@ test("history limits queries, validates known servers, chooses steps and caches"
     const r = await app.request("/api/history?range=1h&server=alpha");
     assert.equal(r.status, 200);
     const data = await r.json();
-    assert.equal(data.step, 30);
+    assert.equal(data.step, 30000);
+    assert.equal(data.timeUnit, "milliseconds");
+    assert.deepEqual(data.series.players[0].values, [[100000, "2"]]);
+    assert.equal(data.end - data.start, 3600000);
     assert.equal(data.series.players.length, 1);
     assert.equal(calls, Object.keys(metrics).length);
     await app.request("/api/history?range=1h&server=alpha");
