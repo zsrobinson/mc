@@ -231,7 +231,7 @@ export class Docker {
     await mkdir(join(dir, "data"), { recursive: true, mode: 0o700 });
     await chmod(dir, 0o700);
     await chmod(join(dir, "data"), 0o700);
-    await quietRconLogging(join(dir, "data"));
+    await quietRconLogging(dir);
     const secret = join(dir, "rcon.secret");
     if (!(await exists(secret)))
       await writeFile(secret, randomBytes(32).toString("hex"), { mode: 0o600 });
@@ -245,7 +245,7 @@ export class Docker {
       INIT_MEMORY: "512M",
       USE_AIKAR_FLAGS: "TRUE",
       OVERRIDE_SERVER_PROPERTIES: "FALSE",
-      REMOVE_OLD_MODS: "TRUE",
+      REMOVE_OLD_MODS: "FALSE",
       ENABLE_RCON: "TRUE",
       RCON_PASSWORD_FILE: "/run/secrets/rcon",
       RCON_PORT: "25575",
@@ -257,8 +257,8 @@ export class Docker {
       MAX_PLAYERS: "20",
       VIEW_DISTANCE: "10",
       ENABLE_ROLLING_LOGS: "true",
-      GENERATE_LOG4J2_CONFIG: "TRUE",
-      REGENERATE_LOG4J2: "FALSE",
+      GENERATE_LOG4J2_CONFIG: "false",
+      JVM_OPTS: "-Dlog4j.configurationFile=/run/config/log4j2.xml",
     };
     if (c.fabricLoader) env.FABRIC_LOADER_VERSION = c.fabricLoader;
     const urls: string[] = [],
@@ -322,6 +322,7 @@ export class Docker {
           volumes: [
             join(dir, "data") + ":/data",
             secret + ":/run/secrets/rcon:ro",
+            join(dir, "log4j2.xml") + ":/run/config/log4j2.xml:ro",
           ],
           networks: ["game"],
           logging: {

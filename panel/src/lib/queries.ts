@@ -61,7 +61,7 @@ export const statusQuery = (name: string) =>
   queryOptions({
     queryKey: keys.status(name),
     queryFn: ({ signal }) => control<Server>("status", name, {}, signal),
-    refetchInterval: 5_000,
+    refetchInterval: 15_000,
   });
 
 export const versionsQuery = queryOptions({

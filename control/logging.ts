@@ -13,7 +13,7 @@ export async function quietRconLogging(data: string) {
  </Appenders>
  <Loggers><Root level="info"><AppenderRef ref="SysOut"/><AppenderRef ref="File"/></Root></Loggers>
 </Configuration>\n`;
-  if (xml.includes("mc-helper RCON housekeeping")) return;
+  if (xml.includes("mc-helper RCON housekeeping v2")) return;
   if (!/<Loggers\s*>/.test(xml))
     throw Error("Custom log4j configuration needs operator review");
   const loggers = [
@@ -26,9 +26,13 @@ export async function quietRconLogging(data: string) {
     .join("\n");
   xml = xml.replace(
     /<Loggers\s*>/,
-    "<Loggers>\n<!-- mc-helper RCON housekeeping: preserve warnings/errors -->\n" +
+    "<Loggers>\n<!-- mc-helper RCON housekeeping v2: preserve warnings/errors -->\n" +
       insert +
       "\n",
+  );
+  xml = xml.replace(
+    /(<Configuration[^>]*>)/,
+    '$1<RegexFilter regex="RCON Client .* shutting down" onMatch="DENY" onMismatch="NEUTRAL"/>',
   );
   await writeFile(path + ".mc-new", xml, { mode: 0o600 });
   await rename(path + ".mc-new", path);
