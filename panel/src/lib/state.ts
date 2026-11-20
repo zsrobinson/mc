@@ -1,31 +1,22 @@
-/** Container states reported by the control service, plus optimistic ones. */
+import { serverState } from "../../../src/server-state";
+
 export type StateTone = "on" | "busy" | "off" | "error";
-
-const TRANSITIONAL = new Set([
-  "starting",
-  "stopping",
-  "restarting",
-  "creating",
-  "removing",
-]);
-const FAILED = new Set(["crashed", "dead", "unhealthy", "missing", "error"]);
-
-export function stateTone(state: string): StateTone {
-  if (state === "running") return "on";
-  if (TRANSITIONAL.has(state)) return "busy";
-  if (FAILED.has(state)) return "error";
-  return "off";
-}
-
-const LABELS: Record<string, string> = {
-  running: "Running",
-  exited: "Stopped",
-  created: "Stopped",
-  paused: "Paused",
+const TONES: Record<ReturnType<typeof serverState>, StateTone> = {
+  running: "on",
+  starting: "busy",
+  stopped: "off",
+  crashed: "error",
 };
-
-export function stateLabel(state: string) {
-  return LABELS[state] ?? state.charAt(0).toUpperCase() + state.slice(1);
+const LABELS = {
+  running: "Running",
+  starting: "Starting",
+  stopped: "Stopped",
+  crashed: "Crashed",
+} as const;
+export function stateTone(state: string): StateTone {
+  return TONES[serverState(state)];
 }
-
-export const isRunning = (state: string) => state === "running";
+export function stateLabel(state: string) {
+  return LABELS[serverState(state)];
+}
+export const isRunning = (state: string) => serverState(state) === "running";
