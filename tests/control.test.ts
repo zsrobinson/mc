@@ -10,7 +10,7 @@ import { Upstream } from "../control/upstream";
 import { Backups, retentionCandidates } from "../control/backups";
 import { Control } from "../control/service";
 import { helperApp } from "../helper";
-import type { ServerConfig, Compatibility } from "../src/domain";
+import type { ServerConfig } from "../src/domain";
 const config: ServerConfig = {
   name: "sample",
   version: "1.21.1",
@@ -316,5 +316,166 @@ test("retention only selects owned snapshot identifiers and retains daily and we
   assert.ok(pruned.length > 0);
   assert.ok(!pruned.includes("other-data"));
   assert.ok(ids.slice(-14).every((id) => !pruned.includes(id)));
-  assert.ok(ids.length - pruned.length <= 22);
+  assert.ok(ids.length - pruned.length <= 34);
+});
+
+test("backups omit RCON credentials and normalize archive modes", async () => {
+  const f = await fixture();
+  try {
+    const secret = "a-test-only-secret-to-remove-from-backups";
+    const root = join(f.store.root, "sample");
+    await mkdir(join(root, "data"), { recursive: true });
+    await writeFile(join(root, "rcon.secret"), secret);
+    await writeFile(
+      join(root, "data/server.properties"),
+      "motd=Test\nrcon.password=" + secret + "\n",
+    );
+    await writeFile(
+      join(root, "data/.rcon-cli.env"),
+      "RCON_PASSWORD=" + secret,
+    );
+    await writeFile(
+      join(root, "data/test.txt"),
+      "prefix " + secret + " suffix",
+    );
+    const { createArchive } = await import("../control/archive");
+    const archive = join(f.dir, "test.tar.gz");
+    await createArchive(root, archive, secret);
+    const tar = await import("tar");
+    const { readFile } = await import("node:fs/promises");
+    const { gunzipSync } = await import("node:zlib");
+    const bytes = gunzipSync(await readFile(archive));
+    assert.equal(bytes.includes(Buffer.from(secret)), false);
+    const names: string[] = [];
+    await tar.t({
+      file: archive,
+      onReadEntry: (entry) => {
+        names.push(entry.path);
+        assert.equal(
+          (entry.mode ?? 0) & 0o777,
+          entry.type === "Directory" ? 0o700 : 0o600,
+        );
+      },
+    });
+    assert.ok(!names.includes("rcon.secret"));
+    assert.ok(!names.includes("data/.rcon-cli.env"));
+  } finally {
+    await rm(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("manual snapshots cannot evict other daily dates and pinned snapshots have independent retention", () => {
+  const now = Date.UTC(2026, 10, 20);
+  const daily = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(now - i * 86400000);
+    return (
+      d
+        .toISOString()
+        .replaceAll(/[-:]/g, "")
+        .replace(/\.\d+Z$/, "Z") + "-abcdef"
+    );
+  });
+  const manual = Array.from(
+    { length: 100 },
+    (_, i) =>
+      `20261120T12${String(Math.floor(i / 60)).padStart(2, "0")}${String(i % 60).padStart(2, "0")}Z-abcdef`,
+  );
+  const pinned = [
+    { id: "20261119T000000Z-abcdef", pinned: true },
+    { id: "20261118T000000Z-abcdef", pinned: true },
+  ];
+  const pruned = retentionCandidates([...daily, ...manual, ...pinned], now);
+  assert.ok(daily.slice(1).every((id) => !pruned.includes(id)));
+  assert.ok(pinned.every((s) => !pruned.includes(s.id)));
+});
+
+test("server.properties editor redacts RCON and refuses network-boundary changes", async () => {
+  const f = await fixture();
+  try {
+    await mkdir(join(f.store.root, "sample/data"), { recursive: true });
+    await writeFile(
+      join(f.store.root, "sample/data/server.properties"),
+      "rcon.password=test-password\nrcon.port=25575\nenable-rcon=true\nserver-port=25565\nlevel-name=world\ndifficulty=normal\n",
+    );
+    const properties = f.control.management.properties;
+    const result = await properties.get("sample");
+    assert.ok(!JSON.stringify(result).includes("test-password"));
+    assert.equal(result.values["rcon.password"], undefined);
+    await assert.rejects(() =>
+      properties.set("sample", {
+        raw: result.raw.replace("server-port=25565", "server-port=28001"),
+        confirm: true,
+      }),
+    );
+    await properties.set("sample", {
+      values: { difficulty: "hard", "max-players": 12 },
+      confirm: true,
+    });
+    const internal = await properties.internal("sample");
+    assert.equal(internal.values["rcon.password"], "test-password");
+    assert.equal(internal.values.difficulty, "hard");
+  } finally {
+    await rm(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("file browsing blocks traversal, symlinks and RCON configuration files", async () => {
+  const f = await fixture();
+  try {
+    await mkdir(join(f.store.root, "sample/data/config"), { recursive: true });
+    await writeFile(join(f.dir, "outside.txt"), "outside");
+    await symlink(
+      join(f.dir, "outside.txt"),
+      join(f.store.root, "sample/data/config/link.txt"),
+    );
+    await writeFile(join(f.store.root, "sample/data/.rcon-cli.env"), "secret");
+    const files = f.control.management.files;
+    await assert.rejects(() => files.read("sample", "../config.json"));
+    await assert.rejects(() => files.read("sample", "config/link.txt"));
+    await assert.rejects(() => files.download("sample", ".rcon-cli.env"));
+    await files.write("sample", "config/example.json", '{"enabled":true}');
+    assert.equal(
+      (await files.read("sample", "config/example.json")).text,
+      '{"enabled":true}',
+    );
+    await files.remove("sample", "config/example.json");
+    const retained = await import("node:fs/promises").then((fs) =>
+      fs.readdir(join(f.store.root, "sample/retained-files")),
+    );
+    assert.equal(retained.length, 1);
+  } finally {
+    await rm(f.dir, { recursive: true, force: true });
+  }
+});
+
+test("destructive world and server actions require a matching explicit confirmation", async () => {
+  const f = await fixture();
+  try {
+    await assert.rejects(() =>
+      f.control.dispatch({
+        verb: "reset-world",
+        name: "sample",
+        payload: { confirm: true, confirmName: "other" },
+      }),
+    );
+    await assert.rejects(() =>
+      f.control.dispatch({
+        verb: "delete-server",
+        name: "sample",
+        payload: { confirmName: "sample" },
+      }),
+    );
+    await assert.rejects(() =>
+      f.control.dispatch({ verb: "kill", name: "sample", payload: {} }),
+    );
+    await assert.rejects(() =>
+      f.control.dispatch({
+        verb: "delete-file",
+        name: "sample",
+        payload: { path: "config/example.json" },
+      }),
+    );
+  } finally {
+    await rm(f.dir, { recursive: true, force: true });
+  }
 });

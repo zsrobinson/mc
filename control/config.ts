@@ -24,10 +24,14 @@ export const configSchema = z
     mods: z.array(projectSchema).max(50),
     datapacks: z.array(projectSchema).max(50),
     javaTag: z.string(),
+    fabricLoader: z
+      .string()
+      .regex(/^\d+\.\d+\.\d+$/)
+      .optional(),
   })
   .strict();
 export const patchSchema = configSchema
-  .omit({ name: true, javaTag: true })
+  .omit({ name: true, javaTag: true, fabricLoader: true })
   .partial()
   .strict();
 export function required(key: string) {
@@ -94,6 +98,14 @@ export class ConfigStore {
       throw Error("Port outside allowed range");
     if (creating && others.length >= this.limits.maxServers)
       throw Error("Server count limit reached");
+    const reservedFile = join(this.root, "reserved-ports.json");
+    const reserved: { name: string; port: number }[] = (await exists(
+      reservedFile,
+    ))
+      ? JSON.parse(await readFile(reservedFile, "utf8"))
+      : [];
+    if (reserved.some((x) => x.port === c.port && x.name !== c.name))
+      throw Error("Port is reserved by a retained server and DNS record");
     if (others.some((x) => x.port === c.port))
       throw Error("Port already allocated");
     if (

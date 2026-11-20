@@ -22,7 +22,7 @@ type Container = {
   Id: string;
   Config: { Labels: Record<string, string> };
   Mounts: { Destination: string; Source: string }[];
-  State: { Running: boolean; Status: string };
+  State: { Running: boolean; Status: string; StartedAt?: string };
 };
 export class Docker {
   constructor(
@@ -110,6 +110,64 @@ export class Docker {
       await this.id(name),
     ]);
   }
+  async kill(name: string) {
+    await this.run(["docker", "kill", await this.id(name)]);
+  }
+  async metrics(name: string, limit: number) {
+    const info = await this.container(name, true);
+    const empty = {
+      uptimeSeconds: null,
+      cpuPercent: null,
+      memoryBytes: null,
+      memoryLimitBytes: limit * 1024 * 1024,
+      tps: null,
+      mspt: null,
+      cpuLimit: this.cpus,
+    };
+    if (!info?.State.Running) return empty;
+    const stats: Record<string, string> = JSON.parse(
+      await this.run(
+        ["docker", "stats", "--no-stream", "--format", "{{json .}}", info.Id],
+        15000,
+      ),
+    );
+    const bytes = (value: string) => {
+      const m = value.trim().match(/^([0-9.]+)\s*([KMGT]?i?B)$/i);
+      if (!m) return null;
+      const unit = m[2].toLowerCase();
+      const exponent = ["b", "kib", "mib", "gib", "tib"].indexOf(unit);
+      return (
+        Number(m[1]) *
+        (exponent >= 0
+          ? 1024 ** exponent
+          : 1000 ** ["b", "kb", "mb", "gb", "tb"].indexOf(unit))
+      );
+    };
+    let tps: number | null = null,
+      mspt: number | null = null;
+    try {
+      const tick = await this.rcon(name, "tick query");
+      const t = tick.match(/([0-9.]+)\s*(?:ticks per second|TPS)/i);
+      const m = tick.match(/([0-9.]+)\s*(?:milliseconds|ms)/i);
+      if (t) tps = Number(t[1]);
+      if (m) mspt = Number(m[1]);
+    } catch {
+      /* Optional vanilla tick telemetry may not be supported. */
+    }
+    return {
+      ...empty,
+      uptimeSeconds: info.State.StartedAt
+        ? Math.max(
+            0,
+            Math.floor((Date.now() - Date.parse(info.State.StartedAt)) / 1000),
+          )
+        : null,
+      cpuPercent: Number(stats.CPUPerc?.replace("%", "")) || 0,
+      memoryBytes: bytes(stats.MemUsage?.split("/")[0] || ""),
+      tps,
+      mspt,
+    };
+  }
   async compose(c: ServerConfig) {
     const dir = await this.store.folder(c.name);
     const secret = join(dir, "rcon.secret");
@@ -124,6 +182,7 @@ export class Docker {
       MEMORY: c.memory + "M",
       INIT_MEMORY: "512M",
       USE_AIKAR_FLAGS: "TRUE",
+      OVERRIDE_SERVER_PROPERTIES: "FALSE",
       REMOVE_OLD_MODS: "TRUE",
       ENABLE_RCON: "TRUE",
       RCON_PASSWORD_FILE: "/run/secrets/rcon",
@@ -137,6 +196,7 @@ export class Docker {
       VIEW_DISTANCE: "10",
       ENABLE_ROLLING_LOGS: "true",
     };
+    if (c.fabricLoader) env.FABRIC_LOADER_VERSION = c.fabricLoader;
     const urls: string[] = [],
       managed: Record<string, string> = {};
     for (const project of c.datapacks) {

@@ -32,11 +32,10 @@ recreates only that server. Project mods must permit vanilla clients. Uploaded
 ZIPs are size/path checked without extraction. Existing files are preserved.
 Removed downloaded datapacks are deleted only after their ownership hash matches.
 
-Backups issue save-off/save-all flush, archive data/config/secret, and always
+Backups issue save-off/save-all flush, archive data and configuration without RCON credentials, and always
 attempt save-on in finally. Copies are staged over SSH, checked with SHA-256 and
 atomically published. Failure prevents config changes. Retention selects only
-owned completed snapshot identifiers and retains 14 recent snapshots plus the
-newest snapshot in eight ISO weeks. Restore into a private staging directory
+owned completed snapshot identifiers and retains snapshots from 14 distinct days, eight ISO weeks and 12 months. Restore into a private staging directory
 while the server is stopped; verify checksums and preserve the replaced world.
 DNS is an operator task; the helper has no DNS credentials.
 
@@ -44,3 +43,26 @@ Validation: `npx tsc -p tsconfig.control.json` and
 `node --import tsx --test tests/*.test.ts`. Tests exercise signed Access JWTs,
 Origin checks, the Unix boundary, ownership, resources, unsafe upgrades, failed
 replication, save-on recovery, ZIP paths and retention.
+
+Management includes real Docker resource metrics, tick-time queries where supported,
+player/whitelist/operator/ban controls, protected properties, data-scoped files,
+world ZIP transfers/reset, verified backup restore, schedules and retained server
+deletion. Destructive verbs require explicit confirmation; world replacement,
+reset, restore and server deletion also require the exact server name. Game ports
+are reserved after deletion while old DNS records remain. An optional scoped
+DNS integration creates only the configured per-server SRV name. It never deletes
+DNS records.
+
+`cli.ts` supplies mcctl help, JSON output, same-API operations and streamed
+file/world/backup transfers. Deployment installs the private environment wrapper.
+Archive directories/files use 0700/0600; RCON is excluded and reinjected with a
+fresh secret on restore. Pre-upgrade/destructive snapshots are pinned separately
+for 90 days, and at least the latest three pinned snapshots remain. A scratch
+restore-test checks SHA-256, loads level.dat and verifies region files without
+changing the live server.
+
+Optional MC_LOKI_URL and MC_PROMETHEUS_OTLP_URL export only projected metadata
+and numeric metrics. They never export chat, commands, player names, raw logs or
+file contents. MC_OBS_HOST labels the host; MC_OBS_HEALTH_FILE contains only a
+timestamp and pass/fail for an existing host heartbeat. The deployment owns
+Grafana dashboard/alert provisioning and its Healthchecks integration.

@@ -11,5 +11,8 @@ ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/server.ts ./server.ts
+COPY --from=build /app/control ./control
+COPY --from=build /app/web ./web
+COPY --from=build /app/src ./src
 USER node
 CMD ["node_modules/.bin/tsx", "server.ts"]

@@ -13,3 +13,4 @@ jobs:
       - run: npm run build
       - run: npx tsc -p tsconfig.control.json
       - run: node --import tsx --test tests/*.test.ts
+      - run: npx eslint --config eslint.control.config.js control helper.ts server.ts cli.ts web src/domain.ts tests/control.test.ts tests/server.test.ts

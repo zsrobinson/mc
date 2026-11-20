@@ -1,3 +1,6 @@
+import { metadata } from "./control/telemetry";
+import { helperResponse } from "./web/helper-client";
+import { bodyLimit } from "hono/body-limit";
 import { request } from "node:http";
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
@@ -12,7 +15,16 @@ const required = (key: string) => {
 const issuer = required("ACCESS_ISSUER");
 const audience = required("ACCESS_AUD");
 const keys = createRemoteJWKSet(new URL("/cdn-cgi/access/certs", issuer));
-const app = new Hono();
+const app = new Hono<{ Variables: { email: string } }>();
+app.use("*", async (c, next) => {
+  const started = Date.now();
+  await next();
+  void metadata("panel", "http", {
+    status: c.res.status,
+    durationMs: Date.now() - started,
+    outcome: c.res.status < 400 ? "ok" : "error",
+  });
+});
 app.use("*", async (c, next) => {
   c.header("X-Content-Type-Options", "nosniff");
   c.header("Referrer-Policy", "same-origin");
@@ -28,7 +40,7 @@ app.use("*", async (c, next) => {
     );
     if (typeof payload.email !== "string")
       return c.json({ error: "Access email required" }, 401);
-    c.set("email" as never, payload.email as never);
+    c.set("email", payload.email);
   } catch {
     return c.json({ error: "Cloudflare Access authentication required" }, 401);
   }
@@ -41,7 +53,7 @@ app.use("*", async (c, next) => {
 });
 app.get("/api/session", (c) =>
   c.json({
-    email: c.get("email" as never),
+    email: c.get("email"),
     services: JSON.parse(readFileSync(required("SERVICE_MANIFEST"), "utf8")),
   }),
 );
@@ -66,6 +78,30 @@ app.get("/api/search", async (c) => {
   });
   return c.json(await r.json(), r.ok ? 200 : 502);
 });
+app.use(
+  "/api/control",
+  bodyLimit({
+    maxSize: 24 * 1024 * 1024,
+    onError: (c) => c.json({ error: "Request too large" }, 413),
+  }),
+);
+for (const [route, helperPath, method] of [
+  ["/api/download", "/download", "GET"],
+  ["/api/upload", "/upload", "POST"],
+  ["/api/console", "/console", "GET"],
+] as const) {
+  app.on(method, route, async (c) => {
+    try {
+      return await helperResponse(
+        helperPath + "?" + new URL(c.req.url).searchParams.toString(),
+        method,
+        c.req.raw.body,
+      );
+    } catch {
+      return c.json({ error: "Control service unavailable" }, 502);
+    }
+  });
+}
 app.post("/api/control", async (c) => {
   try {
     if (Number(c.req.header("Content-Length") || 0) > 24 * 1024 * 1024)

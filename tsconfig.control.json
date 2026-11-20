@@ -10,5 +10,13 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["control", "helper.ts", "src", "server.ts", "tests/*.test.ts"]
+  "include": [
+    "control",
+    "helper.ts",
+    "cli.ts",
+    "web",
+    "src",
+    "server.ts",
+    "tests/*.test.ts"
+  ]
 }

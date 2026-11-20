@@ -1,16 +1,19 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
-import { ConfigStore, patchSchema, nameSchema, exists } from "./config";
+import { ConfigStore, patchSchema, nameSchema, exists, atomic } from "./config";
 import { Docker } from "./docker";
 import { Upstream } from "./upstream";
 import { Backups } from "./backups";
 import type { ServerConfig, ServerStatus } from "../src/domain";
 // zip.js reads metadata without extracting paths or executing archive content.
+import { Management, managementVerbs } from "./management";
+import { Dns } from "./dns";
 import { BlobReader, ZipReader } from "@zip.js/zip.js";
 export const requestSchema = z
   .object({
     verb: z.enum([
+      ...managementVerbs,
       "list",
       "status",
       "versions",
@@ -34,6 +37,7 @@ export const requestSchema = z
   .strict();
 export type ControlRequest = z.infer<typeof requestSchema>;
 export class Control {
+  readonly management: Management;
   private tail: Promise<unknown> = Promise.resolve();
   constructor(
     readonly store: ConfigStore,
@@ -41,7 +45,15 @@ export class Control {
     readonly upstream: Upstream,
     readonly backups: Backups,
     readonly addresses: { joinDomain?: string; directHost?: string } = {},
-  ) {}
+    readonly dns = new Dns(),
+  ) {
+    this.management = new Management(docker, backups);
+  }
+  exclusive<T>(work: () => Promise<T>): Promise<T> {
+    const result = this.tail.then(work);
+    this.tail = result.catch(() => undefined);
+    return result;
+  }
   dispatch(input: unknown) {
     const request = requestSchema.parse(input);
     const next = this.tail.then(() => this.action(request));
@@ -62,6 +74,9 @@ export class Control {
       ...c,
       state: info?.State.Status ?? "absent",
       players,
+      metrics: await this.docker.metrics(c.name, c.memory + 512),
+      fabricLoader: await this.management.loader(c.name),
+      schedule: await this.management.schedule(c.name),
       backup: await this.backups.latest(c.name),
       joinAddress: this.addresses.joinDomain
         ? c.name + "." + this.addresses.joinDomain
@@ -96,23 +111,42 @@ export class Control {
           name: nameSchema,
           version: z.string(),
           memory: z.number(),
-          port: z.number(),
+          port: z.number().optional(),
           mods: z.array(z.string()).default([]),
           datapacks: z.array(z.string()).default([]),
         })
         .strict()
         .parse(payload);
-      const c = { ...input, javaTag: await this.upstream.java(input.version) };
+      const used = new Set((await this.store.list()).map((c) => c.port));
+      const port =
+        input.port ??
+        Array.from(
+          { length: this.store.limits.portMax - this.store.limits.portMin + 1 },
+          (_, i) => this.store.limits.portMin + i,
+        ).find((p) => !used.has(p));
+      if (port === undefined) throw Error("No free game port");
+      const c = {
+        ...input,
+        port,
+        javaTag: await this.upstream.java(input.version),
+      };
       const dir = await this.store.folder(c.name);
       if (await exists(dir)) throw Error("Server already exists");
       await this.validate(c, true);
       await mkdir(join(dir, "data"), { recursive: true, mode: 0o700 });
       await this.store.write(c);
+      await this.dns.ensure(c.name, c.port);
+      await atomic(
+        join(await this.store.folder(c.name), "desired-state.json"),
+        { running: true },
+      );
       await this.docker.recreate(c);
       return this.status(c);
     }
     if (!name) throw Error("Server name required");
     const c = await this.store.read(name);
+    if (managementVerbs.includes(verb as (typeof managementVerbs)[number]))
+      return this.management.handle(verb, name, payload);
     if (verb === "status") return this.status(c);
     if (verb === "logs") return { text: await this.docker.logs(name) };
     if (verb === "backups") return this.backups.list(name);
@@ -124,10 +158,23 @@ export class Control {
         ),
       };
     if (verb === "start" || verb === "stop" || verb === "restart") {
-      await this.docker.lifecycle(verb, name);
+      await atomic(join(await this.store.folder(name), "desired-state.json"), {
+        running: verb !== "stop",
+      });
+      if (verb === "start" && !(await this.docker.container(name, true))) {
+        await this.dns.ensure(name, c.port);
+        await this.docker.recreate(c);
+      } else await this.docker.lifecycle(verb, name);
       return this.status(c);
     }
-    if (verb === "backup-now") return this.backups.backup(name);
+    if (verb === "backup-now")
+      return this.backups.backup(
+        name,
+        z
+          .object({ reason: z.enum(["daily", "manual"]).default("manual") })
+          .strict()
+          .parse(payload).reason,
+      );
     if (verb === "check-upgrade" || verb === "check-updates") {
       const input = z
         .object({ version: z.string().optional() })
@@ -143,7 +190,10 @@ export class Control {
       await this.upstream.noDowngrade(c.version, updated.version);
       updated.javaTag = await this.upstream.java(updated.version);
       await this.validate(updated);
-      await this.backups.backup(name);
+      await this.backups.backup(
+        name,
+        updated.version !== c.version ? "pre-upgrade" : "pre-config",
+      );
       await this.store.write(updated);
       await this.docker.recreate(updated);
       return this.status(updated);
@@ -183,7 +233,7 @@ export class Control {
       const dir = join(await this.store.folder(name), "data/world/datapacks");
       const dest = join(dir, input.filename);
       if (await exists(dest)) throw Error("Datapack already exists");
-      await this.backups.backup(name);
+      await this.backups.backup(name, "pre-datapack-upload");
       await mkdir(dir, { recursive: true, mode: 0o700 });
       await writeFile(dest, data, { mode: 0o600, flag: "wx" });
       return {

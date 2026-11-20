@@ -6,6 +6,7 @@ export type ServerConfig = {
   mods: string[];
   datapacks: string[];
   javaTag: string;
+  fabricLoader?: string;
 };
 export type ServerStatus = ServerConfig & {
   state: string;
@@ -13,6 +14,16 @@ export type ServerStatus = ServerConfig & {
   backup?: { at: string; targets: number };
   joinAddress?: string;
   directAddress?: string;
+  metrics?: {
+    uptimeSeconds: number | null;
+    cpuPercent: number | null;
+    memoryBytes: number | null;
+    memoryLimitBytes: number | null;
+    tps: number | null;
+    mspt: number | null;
+    cpuLimit?: number;
+  };
+  schedule?: { restartAt?: string | null; backupAt?: string | null };
 };
 export type Compatibility = {
   version: string;
@@ -44,4 +55,7 @@ export type BackupSnapshot = {
   createdAt: string;
   bytes: number;
   replicated: boolean;
+  locations?: string[];
+  reason?: string;
+  pinned?: boolean;
 };

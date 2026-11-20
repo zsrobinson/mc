@@ -1,3 +1,4 @@
+import { createArchive } from "./archive";
 import { spawn } from "node:child_process";
 import { createReadStream } from "node:fs";
 import {
@@ -62,35 +63,63 @@ function isoWeek(date: Date) {
     y + "-" + Math.ceil(((d.getTime() - Date.UTC(y, 0, 1)) / 86400000 + 1) / 7)
   );
 }
-export function retentionCandidates(ids: string[]) {
-  const sorted = ids
-    .filter((id) => snapshotPattern.test(id))
-    .sort()
-    .reverse();
-  const weeks = new Map<string, string>();
-  for (const id of sorted) {
-    const d = new Date(
-      id.slice(0, 4) +
+export type RetentionSnapshot = {
+  id: string;
+  pinned?: boolean;
+  reason?: string;
+};
+export function retentionCandidates(
+  input: (string | RetentionSnapshot)[],
+  now = Date.now(),
+) {
+  const snapshots = input
+    .map((x) => (typeof x === "string" ? { id: x } : x))
+    .filter((x) => snapshotPattern.test(x.id))
+    .sort((a, b) => b.id.localeCompare(a.id));
+  const regular = snapshots.filter((x) => !x.pinned),
+    pinned = snapshots.filter((x) => x.pinned);
+  const daily = new Map<string, string>(),
+    weekly = new Map<string, string>(),
+    monthly = new Map<string, string>();
+  for (const s of regular) {
+    const day = s.id.slice(0, 8);
+    const date = new Date(
+      day.slice(0, 4) +
         "-" +
-        id.slice(4, 6) +
+        day.slice(4, 6) +
         "-" +
-        id.slice(6, 8) +
-        "T" +
-        id.slice(9, 11) +
-        ":" +
-        id.slice(11, 13) +
-        ":" +
-        id.slice(13, 15) +
-        "Z",
+        day.slice(6, 8) +
+        "T00:00:00Z",
     );
-    const week = isoWeek(d);
-    if (!weeks.has(week)) weeks.set(week, id);
+    if (!daily.has(day)) daily.set(day, s.id);
+    const week = isoWeek(date);
+    if (!weekly.has(week)) weekly.set(week, s.id);
+    const month = day.slice(0, 6);
+    if (!monthly.has(month)) monthly.set(month, s.id);
   }
-  const keep = new Set([
-    ...sorted.slice(0, 14),
-    ...[...weeks.values()].slice(0, 8),
-  ]);
-  return sorted.filter((id) => !keep.has(id));
+  const keep = new Set(
+    [...daily.values()]
+      .slice(0, 14)
+      .concat(
+        [...weekly.values()].slice(0, 8),
+        [...monthly.values()].slice(0, 12),
+      ),
+  );
+  for (const [i, s] of pinned.entries()) {
+    const day = s.id.slice(0, 8);
+    const age =
+      now -
+      Date.parse(
+        day.slice(0, 4) +
+          "-" +
+          day.slice(4, 6) +
+          "-" +
+          day.slice(6, 8) +
+          "T00:00:00Z",
+      );
+    if (i < 3 || age < 90 * 86400000) keep.add(s.id);
+  }
+  return snapshots.map((s) => s.id).filter((id) => !keep.has(id));
 }
 export class Backups {
   constructor(
@@ -127,6 +156,10 @@ export class Backups {
           "Z",
         bytes: info.size,
         replicated: await exists(join(path, "replicated.json")),
+        locations: this.targets.map((t) => t.host),
+        ...((await exists(join(path, "snapshot.json")))
+          ? JSON.parse(await readFile(join(path, "snapshot.json"), "utf8"))
+          : {}),
       });
     }
     return snapshots;
@@ -142,11 +175,15 @@ export class Backups {
     const script =
       "set -eu; umask 077; mkdir -p " +
       quote(incoming) +
+      "; chmod 700 " +
+      quote(remote) +
+      " " +
+      quote(incoming) +
       "; tar -C " +
       quote(incoming) +
       " -xf -; cd " +
       quote(incoming) +
-      "; sha256sum -c --status SHA256SUMS; cd ..; mv " +
+      "; find . -type d -print0 | xargs -0 chmod 700; find . -type f -print0 | xargs -0 chmod 600; sha256sum -c --status SHA256SUMS; cd ..; mv " +
       quote(".incoming-" + id) +
       " " +
       quote(id);
@@ -170,7 +207,7 @@ export class Backups {
       throw Error("Backup replication failed; local snapshot retained");
     }
   }
-  async backup(name: string) {
+  async backup(name: string, reason = "daily") {
     const dir = await this.docker.store.folder(name);
     const base = join(this.root, name);
     await mkdir(base, { recursive: true, mode: 0o700 });
@@ -185,17 +222,8 @@ export class Backups {
         await this.docker.rcon(name, "save-off");
         await this.docker.rcon(name, "save-all flush");
       }
-      const parts = [
-        "data",
-        "config.json",
-        "compose.json",
-        "rcon.secret",
-        "managed-datapacks.json",
-      ];
-      const present: string[] = [];
-      for (const part of parts)
-        if (await exists(join(dir, part))) present.push(part);
-      await command(["tar", "-C", dir, "-czf", archive, ...present], 900000);
+      const secret = (await readFile(join(dir, "rcon.secret"), "utf8")).trim();
+      await createArchive(dir, archive, secret);
     } finally {
       if (live) await this.docker.rcon(name, "save-on");
     }
@@ -204,11 +232,37 @@ export class Backups {
       (await hash(archive)) + "  world.tar.gz\n",
       { mode: 0o600 },
     );
-    await writeFile(join(stage, "COMPLETE"), "");
+    await writeFile(join(stage, "COMPLETE"), "", { mode: 0o600 });
+    await atomic(join(stage, "snapshot.json"), {
+      reason,
+      pinned: reason !== "daily" && reason !== "manual",
+      createdAt: new Date().toISOString(),
+    });
     const dest = join(base, id);
     await rename(stage, dest);
-    for (const target of this.targets)
+    const statePath = join(dir, "backup-location-state.json");
+    const locationState: Record<
+      string,
+      { lastAttempt: number; success: boolean; lastSuccess: number }
+    > = (await exists(statePath))
+      ? JSON.parse(await readFile(statePath, "utf8"))
+      : {};
+    for (const target of this.targets) {
+      const previous = locationState[target.host];
+      locationState[target.host] = {
+        lastAttempt: Date.now() / 1000,
+        success: false,
+        lastSuccess: previous?.lastSuccess ?? 0,
+      };
+      await atomic(statePath, locationState);
       await this.replicate(dest, name, id, target);
+      locationState[target.host] = {
+        lastAttempt: Date.now() / 1000,
+        success: true,
+        lastSuccess: Date.now() / 1000,
+      };
+      await atomic(statePath, locationState);
+    }
     await atomic(join(dest, "replicated.json"), {
       targets: this.targets.length,
       at: new Date().toISOString(),
@@ -217,9 +271,7 @@ export class Backups {
       at: id,
       targets: this.targets.length,
     });
-    for (const old of retentionCandidates(
-      (await this.list(name)).map((s) => s.id),
-    )) {
+    for (const old of retentionCandidates(await this.list(name))) {
       for (const target of this.targets) {
         const remote = target.path + "/" + name + "/" + old;
         await command(
