@@ -71,6 +71,7 @@ test("Access signatures, audience, expiry, Origin and Unix helper boundary", asy
       .sign(privateKey);
     const headers = { "Cf-Access-Jwt-Assertion": token };
     assert.equal((await fetch(origin + "/api/session")).status, 401);
+    assert.equal((await fetch(origin + "/api/history")).status, 401);
     const session = await fetch(origin + "/api/session", { headers });
     assert.equal(session.status, 200);
     assert.equal((await session.json()).email, "operator@example.test");

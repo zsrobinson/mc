@@ -1,3 +1,4 @@
+import { HistoryCharts } from "@/components/history-charts";
 import { PageGrid, SectionGroup } from "@zsrobinson/shell";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
@@ -51,15 +52,18 @@ function PlayersPage() {
     );
 
   return (
-    <PageGrid>
-      <SectionGroup>
-        <OnlineCard name={name} players={players.data} />
-        <OperatorsCard name={name} players={players.data} />
-      </SectionGroup>
-      <SectionGroup>
-        <WhitelistCard name={name} players={players.data} />
-        <BansCard name={name} players={players.data} />
-      </SectionGroup>
-    </PageGrid>
+    <div className="grid gap-4">
+      <HistoryCharts names={[name]} server={name} playersOnly />
+      <PageGrid>
+        <SectionGroup>
+          <OnlineCard name={name} players={players.data} />
+          <OperatorsCard name={name} players={players.data} />
+        </SectionGroup>
+        <SectionGroup>
+          <WhitelistCard name={name} players={players.data} />
+          <BansCard name={name} players={players.data} />
+        </SectionGroup>
+      </PageGrid>
+    </div>
   );
 }

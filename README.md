@@ -64,19 +64,19 @@ its deletion is explicitly approved.
 The panel is a Vite app in `panel/` built on the shared shell, with TanStack
 Router file routes and TanStack Query for every request.
 
-| Route                        | Page                                                    |
-| ---------------------------- | ------------------------------------------------------- |
-| `/`                          | Servers with join addresses, players and status         |
-| `/new`                       | Create a server from a name; advanced options are optional |
-| `/servers/$name`             | Overview: status, performance, players, connection      |
-| `/servers/$name/console`     | Live log with reconnect, RCON commands with history, log files |
-| `/servers/$name/players`     | Online players, whitelist, operators and bans           |
-| `/servers/$name/mods`        | Installed mods and datapacks, updates, Modrinth search  |
-| `/servers/$name/files`       | Data directory browser, text editor, upload, download   |
-| `/servers/$name/world`       | Download, replace or reset the world                    |
-| `/servers/$name/backups`     | Snapshots, back up now, restore test, restore, download |
-| `/servers/$name/software`    | Minecraft upgrade with compatibility check, Fabric loader |
-| `/servers/$name/settings`    | Game settings, server.properties, resources, schedule, DNS, icon, rename, delete |
+| Route                     | Page                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| `/`                       | Servers with join addresses, players and status                                  |
+| `/new`                    | Create a server from a name; advanced options are optional                       |
+| `/servers/$name`          | Overview: status, performance, players, connection                               |
+| `/servers/$name/console`  | Live log with reconnect, RCON commands with history, log files                   |
+| `/servers/$name/players`  | Online players, whitelist, operators and bans                                    |
+| `/servers/$name/mods`     | Installed mods and datapacks, updates, Modrinth search                           |
+| `/servers/$name/files`    | Data directory browser, text editor, upload, download                            |
+| `/servers/$name/world`    | Download, replace or reset the world                                             |
+| `/servers/$name/backups`  | Snapshots, back up now, restore test, restore, download                          |
+| `/servers/$name/software` | Minecraft upgrade with compatibility check, Fabric loader                        |
+| `/servers/$name/settings` | Game settings, server.properties, resources, schedule, DNS, icon, rename, delete |
 
 Dialogs only confirm short actions. Restoring, replacing or resetting a world,
 renaming and deleting a server require typing the server's name. The console
@@ -101,3 +101,21 @@ lockfile. Review both files, run `npm run typecheck`, `npm run lint`,
 `npm run format:check`, `npm run build` and the backend checks from CI, then
 commit and deploy. Shared blocks and the Access/session/static/observability
 server boundary live in shell; keep only Minecraft behavior in this app.
+
+## Dashboard history
+
+Configure `PROMETHEUS_URL` in the panel environment. The authenticated
+`GET /api/history?range=24h&server=phelix` endpoint accepts only 1h, 24h, 7d,
+and 30d, and an optional server validated against the helper's server list.
+It runs fixed named queries for server status, players, MSPT, CPU, memory and
+limits, backup success timestamps, and panel request/error rates. Steps are
+30 seconds, 5 minutes, 30 minutes, and 2 hours respectively, with a 15-second
+cache and an 8-second upstream timeout. Clients cannot submit PromQL.
+
+The Dashboard is the default landing page. Server colors remain stable across
+pages. Missing samples stay empty; current values remain in the Overview.
+Peak players today is the highest sampled combined player count since midnight
+UTC. Backup size history uses actual snapshot metadata because the exporter
+does not publish snapshot sizes. Retention belongs to the Prometheus deployment;
+longer ranges fill as samples accumulate. No infrastructure URL is compiled into
+the client or included in this repository.

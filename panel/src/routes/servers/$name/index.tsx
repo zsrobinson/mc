@@ -1,3 +1,4 @@
+import { HistoryCharts } from "@/components/history-charts";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageStack } from "@zsrobinson/shell";
 import {
@@ -14,12 +15,15 @@ function Overview() {
   const { data: server } = useServer(name);
   if (!server) return null;
   return (
-    <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-      <PageStack>
-        <ResourcesCard server={server} />
-        <PlayersCard server={server} />
-      </PageStack>
-      <ConnectionCard server={server} />
-    </div>
+    <PageStack>
+      <HistoryCharts names={[name]} server={name} />
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <PageStack>
+          <ResourcesCard server={server} />
+          <PlayersCard server={server} />
+        </PageStack>
+        <ConnectionCard server={server} />
+      </div>
+    </PageStack>
   );
 }

@@ -73,6 +73,19 @@ export function useServerNavigation(
   const navigate = useNavigate();
   return [
     {
+      id: "overview",
+      items: [
+        {
+          id: "dashboard",
+          label: "Dashboard",
+          icon: <LayoutDashboardIcon />,
+          render: <Link to="/" />,
+          onSelect: () => void navigate({ to: "/" }),
+          active: pathname === "/",
+        },
+      ],
+    },
+    {
       id: "commands",
       hidden: true,
       items: [
@@ -110,7 +123,7 @@ export function useServerNavigation(
         statusLabel: stateLabel(server.state),
         badge:
           (parsePlayers(server.players)?.online ?? 0) > 0
-            ? server.players
+            ? String(parsePlayers(server.players)?.online)
             : undefined,
         active: server.name === current,
         render: (
