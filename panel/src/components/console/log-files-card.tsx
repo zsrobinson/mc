@@ -26,15 +26,15 @@ export function LogFilesCard({ name }: { name: string }) {
   const files = useQuery(logFilesQuery(name));
 
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <CardTitle>Log files</CardTitle>
       </CardHeader>
       <CardContent>
         {files.isPending ? (
           <div className="flex flex-col gap-2">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-11 w-full sm:h-9" />
+            <Skeleton className="h-11 w-full sm:h-9" />
           </div>
         ) : files.isError ? (
           <QueryError
@@ -48,10 +48,10 @@ export function LogFilesCard({ name }: { name: string }) {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-9">File</TableHead>
-                <TableHead className="h-9 text-right">Size</TableHead>
-                <TableHead className="h-9 max-sm:hidden">Modified</TableHead>
-                <TableHead className="h-9 w-10">
+                <TableHead>File</TableHead>
+                <TableHead className="text-right">Size</TableHead>
+                <TableHead className="max-sm:hidden">Modified</TableHead>
+                <TableHead className="w-10">
                   <span className="sr-only">Download</span>
                 </TableHead>
               </TableRow>

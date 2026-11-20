@@ -1,8 +1,14 @@
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@zsrobinson/shell/ui/native-select";
+import { CardHeader, CardTitle } from "@zsrobinson/shell/ui/card";
+import { FormStack } from "@zsrobinson/shell";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
-import { cn } from "cn";
+import { cn } from "@zsrobinson/shell/lib/utils";
 import { Button } from "@zsrobinson/shell/ui/button";
 import { Card, CardContent, CardFooter } from "@zsrobinson/shell/ui/card";
 import {
@@ -18,7 +24,7 @@ import { Spinner } from "@zsrobinson/shell/ui/spinner";
 import { availableHeapMiB } from "@/lib/budget";
 import { formatMiB } from "@/lib/format";
 import { useControlMutation } from "@/lib/mutations";
-import { limitsQuery, serversQuery } from "@/lib/queries";
+import { limitsQuery, serversQuery, versionsQuery } from "@/lib/queries";
 import { MAX_NAME_LENGTH, serverNameError } from "@/lib/server-name";
 import type { Server } from "@/lib/types";
 import {
@@ -41,6 +47,7 @@ type Payload = { name: string } & ReturnType<typeof advancedPayload>;
 export function CreateServerForm() {
   const navigate = useNavigate();
   const limits = useQuery(limitsQuery);
+  const versions = useQuery(versionsQuery);
   const servers = useQuery(serversQuery);
   const [name, setName] = useState("");
   const [touched, setTouched] = useState(false);
@@ -79,11 +86,14 @@ export function CreateServerForm() {
   const showNameError = (touched || name !== "") && nameError;
 
   return (
-    <div className="flex max-w-xl flex-col gap-4">
+    <FormStack>
       {full && servers.data ? (
         <BudgetFull servers={servers.data} limits={limits.data} />
       ) : null}
       <Card>
+        <CardHeader>
+          <CardTitle>Server</CardTitle>
+        </CardHeader>
         <form
           className="contents"
           noValidate
@@ -95,32 +105,55 @@ export function CreateServerForm() {
           }}
         >
           <CardContent>
-            <FieldGroup className="gap-5">
-              <Field data-invalid={showNameError ? true : undefined}>
-                <FieldLabel htmlFor="server-name">Name</FieldLabel>
-                <Input
-                  id="server-name"
-                  autoFocus
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  maxLength={MAX_NAME_LENGTH}
-                  disabled={create.isPending}
-                  aria-invalid={showNameError ? true : undefined}
-                  value={name}
-                  onChange={(event) =>
-                    setName(event.target.value.toLowerCase())
-                  }
-                />
-                {showNameError ? (
-                  <FieldError>{nameError}</FieldError>
-                ) : (
-                  <FieldDescription>
-                    Becomes the join address. Lowercase letters, digits and
-                    hyphens.
-                  </FieldDescription>
-                )}
-              </Field>
+            <FieldGroup className="gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field data-invalid={showNameError ? true : undefined}>
+                  <FieldLabel htmlFor="server-name">Name</FieldLabel>
+                  <Input
+                    id="server-name"
+                    autoFocus
+                    autoComplete="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    maxLength={MAX_NAME_LENGTH}
+                    disabled={create.isPending}
+                    aria-invalid={showNameError ? true : undefined}
+                    value={name}
+                    onChange={(event) =>
+                      setName(event.target.value.toLowerCase())
+                    }
+                  />
+                  {showNameError ? (
+                    <FieldError>{nameError}</FieldError>
+                  ) : (
+                    <FieldDescription>
+                      Becomes the join address. Lowercase letters, digits and
+                      hyphens.
+                    </FieldDescription>
+                  )}
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="server-version">Version</FieldLabel>
+                  <NativeSelect
+                    id="server-version"
+                    className="w-full"
+                    disabled={create.isPending}
+                    value={advanced.version}
+                    onChange={(e) =>
+                      setAdvanced((v) => ({ ...v, version: e.target.value }))
+                    }
+                  >
+                    <NativeSelectOption value="">
+                      Latest{versions.data?.[0] ? ` (${versions.data[0]})` : ""}
+                    </NativeSelectOption>
+                    {versions.data?.map((v) => (
+                      <NativeSelectOption key={v} value={v}>
+                        {v}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                </Field>
+              </div>
               <div>
                 <Button
                   type="button"
@@ -171,6 +204,6 @@ export function CreateServerForm() {
           </CardFooter>
         </form>
       </Card>
-    </div>
+    </FormStack>
   );
 }

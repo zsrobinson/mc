@@ -1,6 +1,6 @@
+import { FormStack } from "@zsrobinson/shell";
 import { createFileRoute } from "@tanstack/react-router";
 
-import { DnsCard } from "@/components/dns/dns-card";
 import { DangerZone } from "@/components/settings/danger-zone";
 import { IconCard } from "@/components/settings/icon-card";
 import { PropertiesCard } from "@/components/settings/properties-card";
@@ -23,10 +23,10 @@ function SettingsPage() {
   const { data: server } = useServer(name);
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+    <FormStack>
       <PropertiesCard name={name} />
       {server ? (
-        <div className="grid gap-4">
+        <>
           <ResourcesCard
             key={`${server.memory}:${server.port}`}
             server={server}
@@ -34,16 +34,12 @@ function SettingsPage() {
           <ScheduleCard
             key={`${server.schedule?.restartAt}:${server.schedule?.backupAt}`}
             server={server}
+            kind="restart"
           />
-          <DnsCard server={server} />
           <IconCard name={name} />
-        </div>
-      ) : null}
-      {server ? (
-        <div className="lg:col-span-2">
           <DangerZone server={server} />
-        </div>
+        </>
       ) : null}
-    </div>
+    </FormStack>
   );
 }

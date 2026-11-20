@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { cn } from "cn";
+import { cn } from "@zsrobinson/shell/lib/utils";
 
 /** A project's Modrinth icon, served same-site; initials when missing. */
 export function ProjectIcon({
@@ -16,7 +16,7 @@ export function ProjectIcon({
     <span
       aria-hidden="true"
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-sm font-medium text-muted-foreground",
+        "flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted text-sm font-medium text-muted-foreground",
         className,
       )}
     >

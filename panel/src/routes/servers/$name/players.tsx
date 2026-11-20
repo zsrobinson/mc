@@ -1,3 +1,4 @@
+import { PageGrid, SectionGroup } from "@zsrobinson/shell";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader } from "@zsrobinson/shell/ui/card";
@@ -26,19 +27,19 @@ function PlayersPage() {
 
   if (players.isPending)
     return (
-      <div className="grid items-start gap-4 md:grid-cols-2" aria-busy="true">
+      <PageGrid aria-busy="true">
         {[0, 1, 2, 3].map((key) => (
           <Card key={key} size="sm">
             <CardHeader>
               <Skeleton className="h-5 w-24" />
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              <Skeleton className="h-9 w-full" />
-              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-11 sm:h-9 w-full" />
+              <Skeleton className="h-11 sm:h-9 w-full" />
             </CardContent>
           </Card>
         ))}
-      </div>
+      </PageGrid>
     );
   if (players.isError)
     return (
@@ -50,15 +51,15 @@ function PlayersPage() {
     );
 
   return (
-    <div className="grid items-start gap-4 md:grid-cols-2">
-      <div className="grid gap-4">
+    <PageGrid>
+      <SectionGroup>
         <OnlineCard name={name} players={players.data} />
         <OperatorsCard name={name} players={players.data} />
-      </div>
-      <div className="grid gap-4">
+      </SectionGroup>
+      <SectionGroup>
         <WhitelistCard name={name} players={players.data} />
         <BansCard name={name} players={players.data} />
-      </div>
-    </div>
+      </SectionGroup>
+    </PageGrid>
   );
 }

@@ -25,7 +25,7 @@ type Container = {
   Id: string;
   Config: { Labels: Record<string, string> };
   Mounts: { Destination: string; Source: string }[];
-  State: { Running: boolean; Status: string; StartedAt?: string };
+  State: { Running: boolean; Status: string; StartedAt?: string; ExitCode?: number };
 };
 export class Docker {
   constructor(
@@ -359,4 +359,8 @@ export class Docker {
       900000,
     );
   }
+}
+
+export function reportedContainerState(state: {Status:string;ExitCode?:number}|undefined, desiredRunning=true) {
+  return state?.Status === "exited" && state.ExitCode !== undefined && state.ExitCode !== 0 && desiredRunning ? "crashed" : state?.Status ?? "absent";
 }

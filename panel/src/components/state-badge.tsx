@@ -1,4 +1,5 @@
-import { cn } from "cn";
+import { Link, useParams } from "@tanstack/react-router";
+import { cn } from "@zsrobinson/shell/lib/utils";
 import { Badge } from "@zsrobinson/shell/ui/badge";
 
 import { stateLabel, stateTone, type StateTone } from "@/lib/state";
@@ -30,10 +31,18 @@ export function StateDot({
 }
 
 export function StateBadge({ state }: { state: string }) {
-  return (
+  const { name } = useParams({ strict: false });
+  const badge = (
     <Badge variant={stateTone(state) === "error" ? "destructive" : "outline"}>
       <StateDot state={state} className="size-1.5" />
       {stateLabel(state)}
     </Badge>
+  );
+  return state === "crashed" && name ? (
+    <Link to="/servers/$name/console" params={{ name }}>
+      {badge}
+    </Link>
+  ) : (
+    badge
   );
 }

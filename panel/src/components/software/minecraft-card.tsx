@@ -3,7 +3,6 @@ import { useId, useState } from "react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
   CardFooter,
   CardHeader,
@@ -59,14 +58,16 @@ export function MinecraftCard({ server }: { server: Server }) {
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>Minecraft</CardTitle>
-        <CardAction className="text-sm font-medium tabular-nums">
-          {server.version}
-        </CardAction>
+        <CardTitle>
+          Minecraft{" "}
+          <span className="ml-1 font-normal text-muted-foreground">
+            {server.version}
+          </span>
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {versions.isPending ? (
-          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-11 sm:h-9 w-full" />
         ) : candidates.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             {versions.isError

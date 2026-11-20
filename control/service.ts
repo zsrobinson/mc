@@ -4,7 +4,7 @@ import { mkdir, writeFile, rename, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { ConfigStore, patchSchema, nameSchema, exists, atomic } from "./config";
-import { Docker } from "./docker";
+import { Docker, reportedContainerState } from "./docker";
 import { Upstream } from "./upstream";
 import { Backups } from "./backups";
 import type { ServerConfig, ServerStatus } from "../src/domain";
@@ -27,6 +27,7 @@ export const requestSchema = z
       "rcon",
       "apply-config",
       "backup-now",
+      "pin-backup",
       "backups",
       "create-server",
       "create-progress",
@@ -121,9 +122,11 @@ export class Control {
       players = await cached.result;
     }
 
+    const desiredFile=join(await this.store.folder(c.name),"desired-state.json");
+    const desired=await exists(desiredFile)?JSON.parse(await readFile(desiredFile,"utf8")).running!==false:true;
     return {
       ...c,
-      state: info?.State.Status ?? "absent",
+      state: reportedContainerState(info?.State,desired),
       players,
       metrics: await this.docker
         .metrics(c.name, c.memory + 512)
@@ -392,6 +395,10 @@ export class Control {
     if (verb === "status") return this.status(c);
     if (verb === "logs") return { text: await this.docker.logs(name) };
     if (verb === "backups") return this.backups.list(name);
+    if (verb === "pin-backup") {
+      const p=z.object({snapshot:z.string(),pinned:z.boolean()}).strict().parse(payload);
+      return this.backups.pin(name,p.snapshot,p.pinned);
+    }
     if (verb === "rcon")
       return {
         text: await this.docker.rcon(

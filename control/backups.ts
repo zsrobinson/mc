@@ -308,6 +308,15 @@ export class Backups {
     }
     return { snapshot: id, replicated: true as const };
   }
+  async pin(name: string, snapshot: string, pinned: boolean) {
+    if (!snapshotPattern.test(snapshot)) throw Error("Invalid snapshot");
+    const item = (await this.list(name)).find(item => item.id === snapshot);
+    if (!item) throw Error("Backup not found");
+    const file = join(this.root, item.sourceName ?? name, snapshot, "snapshot.json");
+    const metadata = await exists(file) ? JSON.parse(await readFile(file, "utf8")) : {};
+    await atomic(file, {...metadata, pinned});
+    return {snapshot, pinned};
+  }
   async latest(name: string) {
     const path = join(
       await this.docker.store.folder(name),

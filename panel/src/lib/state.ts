@@ -8,7 +8,7 @@ const TRANSITIONAL = new Set([
   "creating",
   "removing",
 ]);
-const FAILED = new Set(["dead", "unhealthy", "missing", "error"]);
+const FAILED = new Set(["crashed", "dead", "unhealthy", "missing", "error"]);
 
 export function stateTone(state: string): StateTone {
   if (state === "running") return "on";

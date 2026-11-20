@@ -1,26 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
-
-import { LoaderCard } from "@/components/software/loader-card";
-import { MinecraftCard } from "@/components/software/minecraft-card";
-import { versionsQuery } from "@/lib/queries";
-import { useServer } from "@/lib/use-server";
-
+import { createFileRoute, redirect } from "@tanstack/react-router";
 export const Route = createFileRoute("/servers/$name/software")({
-  staticData: { crumb: "Software" },
-  loader: ({ context: { queryClient } }) => {
-    void queryClient.prefetchQuery(versionsQuery);
+  beforeLoad: ({ params }) => {
+    throw redirect({
+      to: "/servers/$name/mods",
+      params,
+      search: { kind: "mod" },
+    });
   },
-  component: SoftwarePage,
 });
-
-function SoftwarePage() {
-  const { name } = Route.useParams();
-  const { data: server } = useServer(name);
-  if (!server) return null;
-  return (
-    <div className="grid items-start gap-4 md:grid-cols-2">
-      <MinecraftCard server={server} />
-      <LoaderCard server={server} />
-    </div>
-  );
-}

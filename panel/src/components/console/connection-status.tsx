@@ -1,5 +1,5 @@
 import type { UseQueryResult } from "@tanstack/react-query";
-import { cn } from "cn";
+import { cn } from "@zsrobinson/shell/lib/utils";
 
 /**
  * Live while the stream is open or polling succeeds; Reconnecting while both

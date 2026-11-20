@@ -33,12 +33,12 @@ import { UploadProgress } from "@zsrobinson/shell/blocks/upload-progress";
 export function DownloadWorldCard({ name }: { name: string }) {
   const info = useQuery(worldInfoQuery(name));
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <CardTitle className="flex min-h-8 items-center">World</CardTitle>
         <CardAction>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             render={<a href={downloadUrl("download-world", name)} download />}
             nativeButton={false}
@@ -87,7 +87,7 @@ export function ReplaceWorldCard({ name }: { name: string }) {
   const tooLarge = file !== null && file.size > MAX_UPLOAD_BYTES;
 
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <CardTitle>Replace world</CardTitle>
       </CardHeader>
@@ -157,7 +157,7 @@ export function ResetWorldCard({ name }: { name: string }) {
   >("reset-world", name, { success: "World reset" });
 
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <CardTitle>Reset world</CardTitle>
       </CardHeader>

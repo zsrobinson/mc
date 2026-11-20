@@ -44,7 +44,7 @@ export function DatapackUploadCard({ name }: { name: string }) {
   const tooLarge = file !== null && file.size > MAX_BYTES;
 
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <CardTitle>Upload datapack</CardTitle>
       </CardHeader>

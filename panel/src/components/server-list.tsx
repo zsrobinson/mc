@@ -1,5 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { Card } from "@zsrobinson/shell/ui/card";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@zsrobinson/shell/ui/button";
+import { serversQuery } from "@/lib/queries";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardAction,
+  CardContent,
+} from "@zsrobinson/shell/ui/card";
 import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
 
 import { formatMiB, parsePlayers } from "@/lib/format";
@@ -8,25 +17,49 @@ import { Address } from "./address";
 import { StateBadge } from "./state-badge";
 
 const ROW =
-  "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-1.5 px-5 py-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_5.5rem_6.5rem]";
+  "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-1.5 px-0 py-2 min-h-14 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_5.5rem_6.5rem]";
 
 export function ServerList({ servers }: { servers: Server[] }) {
+  const queryClient = useQueryClient();
   return (
-    <Card className="gap-0 py-0">
-      <div
-        aria-hidden="true"
-        className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_5.5rem_6.5rem] gap-x-6 border-b px-5 py-2.5 text-xs font-medium text-muted-foreground md:grid"
-      >
-        <span>Server</span>
-        <span>Address</span>
-        <span>Players</span>
-        <span>Status</span>
-      </div>
-      <ul className="divide-y">
-        {servers.map((server) => (
-          <ServerRow key={server.name} server={server} />
-        ))}
-      </ul>
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          Servers{" "}
+          <span className="font-normal text-muted-foreground">
+            {servers.length}
+          </span>
+        </CardTitle>
+        <CardAction>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              void queryClient.invalidateQueries({
+                queryKey: serversQuery.queryKey,
+              })
+            }
+          >
+            Refresh
+          </Button>
+        </CardAction>
+      </CardHeader>
+      <CardContent>
+        <div
+          aria-hidden="true"
+          className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_5.5rem_6.5rem] gap-x-6 border-b py-2.5 text-xs font-medium text-muted-foreground md:grid"
+        >
+          <span>Server</span>
+          <span>Address</span>
+          <span>Players</span>
+          <span>Status</span>
+        </div>
+        <ul className="divide-y px-5">
+          {servers.map((server) => (
+            <ServerRow key={server.name} server={server} />
+          ))}
+        </ul>
+      </CardContent>
     </Card>
   );
 }
@@ -76,7 +109,7 @@ function ServerRow({ server }: { server: Server }) {
 export function ServerListSkeleton() {
   return (
     <Card className="gap-0 py-0" aria-busy="true" aria-label="Loading servers">
-      <ul className="divide-y">
+      <ul className="divide-y px-5">
         {[0, 1].map((key) => (
           <li key={key} className={ROW}>
             <div className="flex flex-col gap-2">

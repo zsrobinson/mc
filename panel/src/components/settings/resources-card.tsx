@@ -63,7 +63,7 @@ export function ResourcesCard({ server }: { server: Server }) {
   const dirty = Object.keys(changes).length > 0;
 
   return (
-    <Card size="sm">
+    <Card>
       <CardHeader>
         <CardTitle>Resources</CardTitle>
       </CardHeader>
@@ -105,7 +105,7 @@ export function ResourcesCard({ server }: { server: Server }) {
           </FieldDescription>
         </Field>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="gap-2">
         <ConfirmAction
           trigger={
             <Button
@@ -114,7 +114,7 @@ export function ResourcesCard({ server }: { server: Server }) {
               }
             >
               {apply.isPending ? <Spinner data-icon="inline-start" /> : null}
-              Apply resources
+              Save
             </Button>
           }
           title="Apply and restart?"
@@ -123,6 +123,16 @@ export function ResourcesCard({ server }: { server: Server }) {
         >
           The server is backed up, then recreated with the new resources.
         </ConfirmAction>
+        <Button
+          variant="ghost"
+          disabled={!dirty || apply.isPending}
+          onClick={() => {
+            setMemory(String(server.memory));
+            setPort(String(server.port));
+          }}
+        >
+          Reset
+        </Button>
       </CardFooter>
     </Card>
   );

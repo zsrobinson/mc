@@ -701,3 +701,17 @@ test("world ZIP downloads exclude secret files", async () => {
     await rm(f.dir, { recursive: true, force: true });
   }
 });
+
+test("pinning only changes retention metadata and rejects unknown snapshots", async()=>{
+ const f=await fixture();try {
+  const id='20261120T163807Z-ab1234';const dir=join(f.backups.root,config.name,id);
+  await mkdir(dir,{recursive:true});await writeFile(join(dir,'COMPLETE'),'');await writeFile(join(dir,'world.tar.gz'),'archive');
+  await writeFile(join(dir,'snapshot.json'),JSON.stringify({reason:'manual',pinned:false}));
+  await f.control.dispatch({verb:'pin-backup',name:config.name,payload:{snapshot:id,pinned:true}});
+  assert.equal((await f.backups.list(config.name))[0].pinned,true);
+  await f.control.dispatch({verb:'pin-backup',name:config.name,payload:{snapshot:id,pinned:false}});
+  assert.equal((await f.backups.list(config.name))[0].pinned,false);
+  await assert.rejects(()=>f.backups.pin(config.name,'../outside',true));
+  await assert.rejects(()=>f.backups.pin(config.name,'20261120T163807Z-ffffff',true));
+ }finally{await rm(f.dir,{recursive:true,force:true})}
+});
