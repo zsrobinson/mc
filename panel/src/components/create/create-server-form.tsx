@@ -3,7 +3,7 @@ import {
   NativeSelectOption,
 } from "@zsrobinson/shell/ui/native-select";
 import { CardHeader, CardTitle } from "@zsrobinson/shell/ui/card";
-import { PageStack } from "@zsrobinson/shell";
+import { FormStack } from "@zsrobinson/shell";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronDownIcon } from "lucide-react";
@@ -86,7 +86,7 @@ export function CreateServerForm() {
   const showNameError = (touched || name !== "") && nameError;
 
   return (
-    <PageStack className="max-w-3xl">
+    <FormStack>
       {full && servers.data ? (
         <BudgetFull servers={servers.data} limits={limits.data} />
       ) : null}
@@ -204,6 +204,6 @@ export function CreateServerForm() {
           </CardFooter>
         </form>
       </Card>
-    </PageStack>
+    </FormStack>
   );
 }

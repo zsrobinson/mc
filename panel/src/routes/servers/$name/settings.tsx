@@ -1,4 +1,4 @@
-import { PageStack } from "@zsrobinson/shell";
+import { FormStack } from "@zsrobinson/shell";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { DangerZone } from "@/components/settings/danger-zone";
@@ -23,7 +23,7 @@ function SettingsPage() {
   const { data: server } = useServer(name);
 
   return (
-    <PageStack>
+    <FormStack>
       <PropertiesCard name={name} />
       {server ? (
         <>
@@ -40,6 +40,6 @@ function SettingsPage() {
           <DangerZone server={server} />
         </>
       ) : null}
-    </PageStack>
+    </FormStack>
   );
 }
