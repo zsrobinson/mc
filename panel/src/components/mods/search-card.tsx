@@ -62,7 +62,7 @@ export function SearchCard({
             <InputGroupInput
               type="search"
               aria-label={`Search ${KIND_LABEL[kind].many.toLowerCase()}`}
-              placeholder="Search Modrinth"
+              placeholder="Search"
               value={text}
               onChange={(event) => setText(event.target.value)}
             />

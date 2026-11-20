@@ -25,6 +25,7 @@ function ServerLayout() {
   const server = useServer(name);
   const path = useLocation({ select: (l) => l.pathname });
   const page = labels[path.split("/")[3]] ?? "Overview";
+  if (page === "Console") return <Outlet />;
   return (
     <Page>
       {page !== "Backups" ? (

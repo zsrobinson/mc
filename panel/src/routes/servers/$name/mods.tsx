@@ -1,11 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PageStack } from "@zsrobinson/shell";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@zsrobinson/shell/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@zsrobinson/shell/ui/tabs";
 import { VersionCard } from "@/components/software/version-card";
 import { InstalledCard } from "@/components/mods/installed-card";
 import { DatapackUploadCard } from "@/components/mods/datapack-upload-card";
@@ -33,19 +28,18 @@ function Mods() {
           void navigate({ search: { kind: v as ProjectKind }, replace: true })
         }
       >
-        <TabsList>
-          <TabsTrigger value="mod">Mods</TabsTrigger>
-          <TabsTrigger value="datapack">Datapacks</TabsTrigger>
-        </TabsList>
-        <TabsContent value="mod">
-          <InstalledCard server={server} kind="mod" />
-        </TabsContent>
-        <TabsContent value="datapack">
-          <PageStack>
-            <InstalledCard server={server} kind="datapack" />
-            <DatapackUploadCard name={name} />
-          </PageStack>
-        </TabsContent>
+        <InstalledCard
+          key={kind}
+          server={server}
+          kind={kind}
+          tabs={
+            <TabsList>
+              <TabsTrigger value="mod">Mods</TabsTrigger>
+              <TabsTrigger value="datapack">Datapacks</TabsTrigger>
+            </TabsList>
+          }
+        />
+        {kind === "datapack" ? <DatapackUploadCard name={name} /> : null}
       </Tabs>
     </PageStack>
   );

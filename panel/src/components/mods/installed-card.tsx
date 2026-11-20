@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { SearchCard } from "./search-card";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@zsrobinson/shell/ui/badge";
@@ -35,9 +35,11 @@ import { useApplyProjects } from "./use-apply-projects";
 export function InstalledCard({
   server,
   kind,
+  tabs,
 }: {
   server: Server;
   kind: ProjectKind;
+  tabs?: ReactNode;
 }) {
   const [search, setSearch] = useState("");
   const key = configKey(kind);
@@ -57,12 +59,12 @@ export function InstalledCard({
     <Card>
       <CardHeader>
         <CardTitle>
-          {label.many}{" "}
+          Installed{" "}
           <span className="ml-1 font-normal text-muted-foreground">
             {installed.length}
           </span>
         </CardTitle>
-        <CardAction className="w-40 max-sm:w-32">
+        <CardAction className="w-48 max-sm:w-32">
           <SearchCard
             server={server}
             kind={kind}
@@ -71,6 +73,7 @@ export function InstalledCard({
             part="input"
           />
         </CardAction>
+        <div className="col-span-full">{tabs}</div>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         <SearchCard server={server} kind={kind} text={search} part="results" />
@@ -166,10 +169,10 @@ function ProjectRow({
           )}
         </ItemDescription>
       </ItemContent>
-      <ItemActions>
+      <ItemActions className="-mt-1 self-start">
         <ConfirmAction
           trigger={
-            <Button size="xs" variant="ghost" disabled={removing}>
+            <Button size="sm" variant="ghost" disabled={removing}>
               Remove
             </Button>
           }

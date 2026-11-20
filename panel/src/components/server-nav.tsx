@@ -108,7 +108,10 @@ export function useServerNavigation(
         ),
         status: <StateDot state={server.state} />,
         statusLabel: stateLabel(server.state),
-        badge: parsePlayers(server.players)?.online ?? 0,
+        badge:
+          (parsePlayers(server.players)?.online ?? 0) > 0
+            ? server.players
+            : undefined,
         active: server.name === current,
         render: (
           <Link

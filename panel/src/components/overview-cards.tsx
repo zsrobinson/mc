@@ -1,3 +1,4 @@
+import { ChevronRightIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@zsrobinson/shell/ui/button";
@@ -51,14 +52,14 @@ export function ResourcesCard({ server }: { server: Server }) {
             }
             nativeButton={false}
           >
-            Console
+            Console <ChevronRightIcon data-icon="inline-end" />
           </Button>
         </CardAction>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {tiles.map(([label, value]) => (
-            <div key={label} className="min-w-0 rounded-xl bg-muted/50 p-3">
+            <div key={label} className="min-w-0">
               <div className="text-xs text-muted-foreground">{label}</div>
               <div className="mt-1 text-lg font-medium tabular-nums">
                 {value}
@@ -100,7 +101,7 @@ export function PlayersCard({ server }: { server: Server }) {
             }
             nativeButton={false}
           >
-            Manage
+            Manage <ChevronRightIcon data-icon="inline-end" />
           </Button>
         </CardAction>
       </CardHeader>
@@ -154,7 +155,7 @@ export function ConnectionCard({ server }: { server: Server }) {
             disabled={checking}
             onClick={recheck}
           >
-            Check
+            Check <ChevronRightIcon data-icon="inline-end" />
           </Button>
         </CardAction>
       </CardHeader>
