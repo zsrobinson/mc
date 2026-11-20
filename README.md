@@ -105,7 +105,7 @@ server boundary live in shell; keep only Minecraft behavior in this app.
 ## Dashboard history
 
 Configure `PROMETHEUS_URL` in the panel environment. The authenticated
-`GET /api/history?range=24h&server=phelix` endpoint accepts only 1h, 24h, 7d,
+`GET /api/history?range=24h&server=alpha` endpoint accepts only 1h, 24h, 7d,
 and 30d, and an optional server validated against the helper's server list.
 It runs fixed named queries for server status, players, MSPT, CPU, memory and
 limits, backup success timestamps, and panel request/error rates. Steps are
