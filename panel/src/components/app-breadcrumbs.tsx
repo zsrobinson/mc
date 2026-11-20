@@ -14,7 +14,7 @@ type Crumb = { label: string; to: string; params?: Record<string, string> };
 /** Servers › name › section, derived from the matched routes. */
 export function AppBreadcrumbs() {
   const matches = useMatches();
-  const crumbs: Crumb[] = [{ label: "Servers", to: "/" }];
+  const crumbs: Crumb[] = [{ label: "Dashboard", to: "/" }];
 
   for (const match of matches) {
     const params = match.params as Record<string, string>;

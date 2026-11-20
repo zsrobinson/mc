@@ -1,3 +1,5 @@
+import { BarChartCard } from "@zsrobinson/shell/blocks/chart-card";
+import { serverColor } from "@/lib/history";
 import {
   PageStack,
   PageHeader,
@@ -71,6 +73,19 @@ function BackupsPage() {
         <PageTitle>Backups</PageTitle>
         <PageActions>{backUpButton}</PageActions>
       </PageHeader>
+      <BarChartCard
+        title="Backup size"
+        label="Snapshot sizes over time"
+        loading={backups.isPending}
+        data={(backups.data ?? [])
+          .map((b) => ({
+            time: Date.parse(b.createdAt) / 1000,
+            bytes: b.bytes,
+          }))
+          .sort((a, b) => a.time - b.time)}
+        config={{ bytes: { label: name, color: serverColor(name) } }}
+        format={(n) => `${(n / 1048576).toFixed(0)} MiB`}
+      />
       <Card>
         <CardHeader className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="flex min-h-8 items-center whitespace-nowrap">

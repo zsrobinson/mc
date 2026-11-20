@@ -1,3 +1,4 @@
+import { mountHistory } from "./web/history";
 import { modrinthIcon } from "./web/modrinth";
 import { metadata } from "./control/telemetry";
 import { helperResponse } from "./web/helper-client";
@@ -157,6 +158,7 @@ app.post("/api/control", async (c) => {
     return c.json({ error: "Control service unavailable" }, 502);
   }
 });
+mountHistory(app);
 mountStatic(app);
 serve({
   fetch: app.fetch,

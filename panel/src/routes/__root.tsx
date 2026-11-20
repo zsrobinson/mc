@@ -41,7 +41,9 @@ function RootLayout() {
     setPending({ server, verb }),
   );
   const power = usePowerAction(pending?.server.name ?? "");
-  const entity = navigation.flatMap((g) => g.items).find((item) => item.active);
+  const entity = navigation
+    .flatMap((g) => g.items)
+    .find((item) => item.active && item.children?.length);
   const servers = useQuery(serversQuery);
   const current = servers.data?.find((s) => s.name === entity?.id);
   const signedOut =

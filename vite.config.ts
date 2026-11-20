@@ -28,6 +28,7 @@ export default defineConfig({
     // pre-bundle the CommonJS shim Base UI reaches through it.
     exclude: ["@zsrobinson/shell"],
     include: [
+      "recharts",
       "use-sync-external-store/shim",
       "use-sync-external-store/shim/with-selector",
     ],

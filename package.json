@@ -19,7 +19,7 @@
     "@tanstack/react-router": "^1.170.46",
     "@tanstack/router-plugin": "^1.169.0",
     "@zip.js/zip.js": "^2.25.0",
-    "@zsrobinson/shell": "git+https://github.com/zsrobinson/shell.git#0e316188a945eb758f411c71af348dc189a1d481",
+    "@zsrobinson/shell": "git+https://github.com/zsrobinson/shell.git#658bd01eb2d3bcd2a7dcc4ebae2dd81cb78a2522",
     "hono": "^4.10.0",
     "jose": "^6.1.0",
     "lucide-react": "^1.77.0",
