@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { DownloadIcon } from "lucide-react";
 import { useId, useState } from "react";
 import { Button } from "@zsrobinson/shell/ui/button";
@@ -9,29 +10,28 @@ import {
   CardHeader,
   CardTitle,
 } from "@zsrobinson/shell/ui/card";
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldLabel,
-} from "@zsrobinson/shell/ui/field";
+import { Field, FieldContent, FieldLabel } from "@zsrobinson/shell/ui/field";
 import { Input } from "@zsrobinson/shell/ui/input";
+import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
 import { Switch } from "@zsrobinson/shell/ui/switch";
 
 import { downloadUrl } from "@/lib/api";
+import { formatBytes, formatDateTime, formatRelative } from "@/lib/format";
+import { worldInfoQuery } from "@/lib/queries";
 import { useControlMutation } from "@/lib/mutations";
 import { MAX_UPLOAD_BYTES, useUpload } from "@/lib/use-upload";
 import { ConfirmAction } from "../confirm-action";
+import { DetailList, DetailRow, Unavailable } from "../detail-list";
+import { FileDrop } from "../file-drop";
 import { UploadProgress } from "../upload-progress";
 
 export function DownloadWorldCard({ name }: { name: string }) {
+  const info = useQuery(worldInfoQuery(name));
   return (
     <Card size="sm">
-      <CardHeader className="items-center">
-        <CardTitle className="flex min-h-8 items-center">
-          Download world
-        </CardTitle>
+      <CardHeader>
+        <CardTitle className="flex min-h-8 items-center">World</CardTitle>
         <CardAction>
           <Button
             variant="outline"
@@ -40,18 +40,45 @@ export function DownloadWorldCard({ name }: { name: string }) {
             nativeButton={false}
           >
             <DownloadIcon data-icon="inline-start" />
-            ZIP
+            Download ZIP
           </Button>
         </CardAction>
       </CardHeader>
+      <CardContent>
+        <DetailList>
+          <DetailRow label="Size">
+            {info.data ? (
+              formatBytes(info.data.bytes)
+            ) : info.isPending ? (
+              <Skeleton className="h-4 w-16" />
+            ) : (
+              <Unavailable>Not reported</Unavailable>
+            )}
+          </DetailRow>
+          <DetailRow label="Last saved">
+            {info.data ? (
+              <span title={formatDateTime(info.data.modifiedAt)}>
+                {formatRelative(info.data.modifiedAt)}
+              </span>
+            ) : info.isPending ? (
+              <Skeleton className="h-4 w-24" />
+            ) : (
+              <Unavailable>Not reported</Unavailable>
+            )}
+          </DetailRow>
+          {info.data?.version ? (
+            <DetailRow label="Saved by">
+              Minecraft {info.data.version}
+            </DetailRow>
+          ) : null}
+        </DetailList>
+      </CardContent>
     </Card>
   );
 }
 
 export function ReplaceWorldCard({ name }: { name: string }) {
   const [file, setFile] = useState<File | null>(null);
-  const [inputKey, setInputKey] = useState(0);
-  const id = useId();
   const upload = useUpload("upload-world", name, () => "World replaced");
   const tooLarge = file !== null && file.size > MAX_UPLOAD_BYTES;
 
@@ -61,23 +88,25 @@ export function ReplaceWorldCard({ name }: { name: string }) {
         <CardTitle>Replace world</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
-        <Field data-invalid={tooLarge || undefined}>
-          <FieldLabel htmlFor={id}>World ZIP</FieldLabel>
-          <Input
-            key={inputKey}
-            id={id}
-            type="file"
-            accept=".zip,application/zip"
-            aria-invalid={tooLarge || undefined}
-            disabled={upload.isPending}
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          />
-          <FieldDescription>
-            {tooLarge
-              ? "This file is larger than 512 MiB."
-              : "Up to 512 MiB, containing level.dat. The current world is backed up and kept."}
-          </FieldDescription>
-        </Field>
+        <FileDrop
+          accept=".zip,application/zip"
+          file={file}
+          onFile={setFile}
+          disabled={upload.isPending}
+          invalid={tooLarge}
+          label="Choose a world ZIP"
+        />
+        <p
+          className={
+            tooLarge
+              ? "text-sm text-destructive"
+              : "text-sm text-muted-foreground"
+          }
+        >
+          {tooLarge
+            ? "This file is larger than 512 MiB."
+            : "Up to 512 MiB, containing level.dat. The current world is backed up and kept."}
+        </p>
         {upload.isPending ? (
           <UploadProgress fraction={upload.progress} label="Uploading world" />
         ) : null}
@@ -103,7 +132,6 @@ export function ReplaceWorldCard({ name }: { name: string }) {
               params: { confirm: "true", confirmName: name },
             });
             setFile(null);
-            setInputKey((key) => key + 1);
           }}
         >
           The server stops, the current world is backed up and set aside, and
@@ -145,7 +173,7 @@ export function ResetWorldCard({ name }: { name: string }) {
             <FieldLabel htmlFor={seedId}>Seed</FieldLabel>
             <Input
               id={seedId}
-              placeholder="Random"
+              placeholder="Leave blank for a random seed"
               maxLength={64}
               autoComplete="off"
               value={seed}

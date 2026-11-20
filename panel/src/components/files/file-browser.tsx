@@ -31,6 +31,7 @@ import { formatBytes, formatDateTime } from "@/lib/format";
 import { useControlMutation } from "@/lib/mutations";
 import { filesQuery } from "@/lib/queries";
 import type { FileEntry } from "@/lib/types";
+import { isSecretPath } from "@/lib/secret-files";
 import { MAX_UPLOAD_BYTES, useUpload } from "@/lib/use-upload";
 import { ConfirmAction } from "../confirm-action";
 import { QueryError } from "../query-error";
@@ -49,13 +50,15 @@ export function FileBrowser({ name, path }: { name: string; path: string }) {
     (file) => `Uploaded ${file.name}`,
   );
 
-  const entries = listing.data?.entries.toSorted((a, b) =>
-    a.type === b.type
-      ? a.name.localeCompare(b.name)
-      : a.type === "directory"
-        ? -1
-        : 1,
-  );
+  const entries = listing.data?.entries
+    .filter((entry) => !isSecretPath(entry.path))
+    .toSorted((a, b) =>
+      a.type === b.type
+        ? a.name.localeCompare(b.name)
+        : a.type === "directory"
+          ? -1
+          : 1,
+    );
 
   function send(file: File, overwrite: boolean) {
     return upload.mutateAsync({

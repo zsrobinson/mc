@@ -3,13 +3,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { useId, useState } from "react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@zsrobinson/shell/ui/card";
-import {
   Field,
   FieldDescription,
   FieldError,
@@ -24,7 +17,7 @@ import { MAX_NAME_LENGTH, serverNameError } from "@/lib/server-name";
 import type { Server } from "@/lib/types";
 import { ConfirmAction } from "../confirm-action";
 
-export function RenameCard({ server }: { server: Server }) {
+export function RenameSection({ server }: { server: Server }) {
   const navigate = useNavigate();
   const servers = useQuery(serversQuery);
   const [newName, setNewName] = useState("");
@@ -47,11 +40,11 @@ export function RenameCard({ server }: { server: Server }) {
       : serverNameError(newName, servers.data?.map((item) => item.name) ?? []);
 
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle>Rename server</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <section className="flex flex-col gap-3" aria-labelledby={`${id}-title`}>
+      <h3 id={`${id}-title`} className="text-sm font-medium">
+        Rename server
+      </h3>
+      <div>
         <Field data-invalid={error ? true : undefined}>
           <FieldLabel htmlFor={id}>New name</FieldLabel>
           <Input
@@ -72,8 +65,8 @@ export function RenameCard({ server }: { server: Server }) {
             </FieldDescription>
           )}
         </Field>
-      </CardContent>
-      <CardFooter>
+      </div>
+      <div>
         <ConfirmAction
           trigger={
             <Button
@@ -98,7 +91,7 @@ export function RenameCard({ server }: { server: Server }) {
           The server restarts under the new name and its DNS record moves with
           it. Players using the old address must switch to the new one.
         </ConfirmAction>
-      </CardFooter>
-    </Card>
+      </div>
+    </section>
   );
 }

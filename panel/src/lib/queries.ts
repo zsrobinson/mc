@@ -8,7 +8,9 @@ import type {
   Directory,
   Limits,
   LogFile,
-  ModrinthHit,
+  ProjectDetails,
+  SearchHit,
+  WorldInfo,
   Players,
   Properties,
   Server,
@@ -30,11 +32,17 @@ export const keys = {
   properties: (name: string) => ["server", name, "properties"] as const,
   backups: (name: string) => ["server", name, "backups"] as const,
   dns: (name: string) => ["server", name, "dns"] as const,
+  projects: (name: string) => ["server", name, "projects"] as const,
+  world: (name: string) => ["server", name, "world-info"] as const,
+  loaders: (name: string) => ["server", name, "loader-versions"] as const,
+  upgradeCheck: (name: string, version: string) =>
+    ["server", name, "check-upgrade", version] as const,
   updates: (name: string) => ["server", name, "updates"] as const,
   files: (name: string, path: string) =>
     ["server", name, "files", path] as const,
   file: (name: string, path: string) => ["server", name, "file", path] as const,
-  search: (kind: "mod" | "datapack", q: string) => ["search", kind, q] as const,
+  search: (kind: "mod" | "datapack", q: string, version: string) =>
+    ["search", kind, q, version] as const,
 };
 
 export const sessionQuery = queryOptions({
@@ -144,12 +152,16 @@ export const fileQuery = (name: string, path: string) =>
     retry: false,
   });
 
-export const searchQuery = (kind: "mod" | "datapack", q: string) =>
+export const searchQuery = (
+  kind: "mod" | "datapack",
+  q: string,
+  version: string,
+) =>
   queryOptions({
-    queryKey: keys.search(kind, q),
+    queryKey: keys.search(kind, q, version),
     queryFn: ({ signal }) =>
-      getJson<{ hits: ModrinthHit[] }>(
-        `/api/search?${new URLSearchParams({ q, kind })}`,
+      getJson<{ hits: SearchHit[] }>(
+        `/api/search?${new URLSearchParams({ q, kind, version })}`,
         signal,
       ),
     enabled: q.trim().length >= 2,
@@ -162,5 +174,41 @@ export const dnsQuery = (name: string) =>
     queryKey: keys.dns(name),
     queryFn: ({ signal }) => control<ServerDns>("dns-status", name, {}, signal),
     staleTime: 60_000,
+    retry: false,
+  });
+
+export const projectsQuery = (name: string) =>
+  queryOptions({
+    queryKey: keys.projects(name),
+    queryFn: ({ signal }) =>
+      control<ProjectDetails>("mods-details", name, {}, signal),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+export const worldInfoQuery = (name: string) =>
+  queryOptions({
+    queryKey: keys.world(name),
+    queryFn: ({ signal }) => control<WorldInfo>("world-info", name, {}, signal),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+export const loaderVersionsQuery = (name: string) =>
+  queryOptions({
+    queryKey: keys.loaders(name),
+    queryFn: ({ signal }) =>
+      control<string[]>("loader-versions", name, {}, signal),
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
+
+/** check-upgrade only reads; run it as a query so results show up at once. */
+export const upgradeCheckQuery = (name: string, version: string) =>
+  queryOptions({
+    queryKey: keys.upgradeCheck(name, version),
+    queryFn: ({ signal }) =>
+      control<Compatibility>("check-upgrade", name, { version }, signal),
+    staleTime: 5 * 60_000,
     retry: false,
   });

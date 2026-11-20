@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
 import { useDeferredValue, useState } from "react";
+import { Badge } from "@zsrobinson/shell/ui/badge";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
   Card,
@@ -19,16 +20,19 @@ import {
   ItemContent,
   ItemDescription,
   ItemGroup,
+  ItemMedia,
   ItemTitle,
 } from "@zsrobinson/shell/ui/item";
 import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
 
+import { formatCount } from "@/lib/format";
 import { searchQuery } from "@/lib/queries";
 import type { Server } from "@/lib/types";
 import { ConfirmAction } from "../confirm-action";
 import { QueryError } from "../query-error";
 import { configKey, KIND_LABEL, type ProjectKind } from "./kinds";
+import { ProjectIcon } from "./project-icon";
 import { useApplyProjects } from "./use-apply-projects";
 
 export function SearchCard({
@@ -40,7 +44,7 @@ export function SearchCard({
 }) {
   const [text, setText] = useState("");
   const q = useDeferredValue(text.trim());
-  const search = useQuery(searchQuery(kind, q));
+  const search = useQuery(searchQuery(kind, q, server.version));
   const add = useApplyProjects(server.name, "Added and restarted");
   const key = configKey(kind);
   const installed = new Set(server[key]);
@@ -85,10 +89,23 @@ export function SearchCard({
           <ItemGroup className="gap-2">
             {search.data.hits.map((hit) => (
               <Item key={hit.slug} size="sm" variant="outline">
-                <ItemContent>
+                <ItemMedia>
+                  <ProjectIcon title={hit.title} iconUrl={hit.iconUrl} />
+                </ItemMedia>
+                <ItemContent className="min-w-0">
                   <ItemTitle>{hit.title}</ItemTitle>
                   <ItemDescription className="text-xs">
                     {hit.description}
+                  </ItemDescription>
+                  <ItemDescription className="flex flex-wrap items-center gap-2 text-xs">
+                    {hit.downloads !== undefined ? (
+                      <span>{formatCount(hit.downloads)} downloads</span>
+                    ) : null}
+                    {hit.compatible ? (
+                      <Badge variant="outline">
+                        Works with {server.version}
+                      </Badge>
+                    ) : null}
                   </ItemDescription>
                 </ItemContent>
                 <ItemActions>

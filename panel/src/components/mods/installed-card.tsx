@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@zsrobinson/shell/ui/badge";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
   Card,
@@ -8,15 +9,25 @@ import {
   CardHeader,
   CardTitle,
 } from "@zsrobinson/shell/ui/card";
-import { ItemGroup } from "@zsrobinson/shell/ui/item";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemMedia,
+  ItemTitle,
+} from "@zsrobinson/shell/ui/item";
+import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
 
-import { updatesQuery } from "@/lib/queries";
-import type { Server } from "@/lib/types";
+import { projectsQuery, updatesQuery } from "@/lib/queries";
+import type { ProjectDetail, Server } from "@/lib/types";
 import { ConfirmAction } from "../confirm-action";
-import { EmptyList, ListRow } from "../list-row";
+import { EmptyList } from "../list-row";
 import { QueryError } from "../query-error";
 import { configKey, KIND_LABEL, type ProjectKind } from "./kinds";
+import { ProjectIcon } from "./project-icon";
 import { useApplyProjects } from "./use-apply-projects";
 
 export function InstalledCard({
@@ -28,11 +39,14 @@ export function InstalledCard({
 }) {
   const key = configKey(kind);
   const installed = server[key];
+  const details = useQuery(projectsQuery(server.name));
+  const byslug = new Map(
+    (details.data?.[key] ?? []).map((detail) => [detail.slug, detail]),
+  );
   const remove = useApplyProjects(server.name, "Removed and restarted");
-  const updates = useQuery({ ...updatesQuery(server.name), enabled: false });
   const apply = useApplyProjects(server.name, "Updated and restarted");
-  const results = updates.data?.projects.filter(
-    (project) => project.kind === kind,
+  const outdated = installed.filter(
+    (slug) => byslug.get(slug)?.updateAvailable,
   );
   const label = KIND_LABEL[kind];
 
@@ -48,97 +62,179 @@ export function InstalledCard({
         {installed.length === 0 ? (
           <EmptyList>No {label.many.toLowerCase()} installed</EmptyList>
         ) : (
-          <ItemGroup>
-            {installed.map((project) => (
-              <ListRow key={project} name={project}>
-                <ConfirmAction
-                  trigger={
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      disabled={remove.isPending}
-                    >
-                      Remove
-                    </Button>
-                  }
-                  title={`Remove ${project}?`}
-                  confirmLabel="Remove and restart"
-                  destructive
-                  onConfirm={() =>
-                    remove.mutateAsync({
-                      [key]: installed.filter((item) => item !== project),
-                    })
-                  }
-                >
-                  A backup is taken first, then the server restarts without it.
-                </ConfirmAction>
-              </ListRow>
+          <ItemGroup className="gap-2">
+            {installed.map((slug) => (
+              <ProjectRow
+                key={slug}
+                slug={slug}
+                detail={byslug.get(slug)}
+                loading={details.isPending}
+                removing={remove.isPending}
+                onRemove={() =>
+                  remove.mutateAsync({
+                    [key]: installed.filter((item) => item !== slug),
+                  })
+                }
+              />
             ))}
           </ItemGroup>
         )}
-        {updates.isError ? (
-          <QueryError title="Update check failed" error={updates.error} />
+        {details.isError && installed.length > 0 ? (
+          <LegacyUpdates server={server} kind={kind} />
         ) : null}
-        {results ? <UpdateResults results={results} /> : null}
       </CardContent>
-      {installed.length > 0 ? (
-        <CardFooter className="gap-2">
-          <Button
-            variant="outline"
-            disabled={updates.isFetching}
-            onClick={() => updates.refetch()}
+      {outdated.length > 0 ? (
+        <CardFooter>
+          <ConfirmAction
+            trigger={
+              <Button disabled={apply.isPending}>
+                {apply.isPending ? <Spinner data-icon="inline-start" /> : null}
+                Update{" "}
+                {outdated.length === 1
+                  ? "1 project"
+                  : `${outdated.length} projects`}
+              </Button>
+            }
+            title="Apply updates?"
+            confirmLabel="Back up and restart"
+            onConfirm={() => apply.mutateAsync({})}
           >
-            {updates.isFetching ? <Spinner data-icon="inline-start" /> : null}
-            Check for updates
-          </Button>
-          {results ? (
-            <ConfirmAction
-              trigger={
-                <Button
-                  className="ml-auto"
-                  disabled={
-                    apply.isPending || results.some((r) => !r.compatible)
-                  }
-                >
-                  Apply updates
-                </Button>
-              }
-              title="Apply updates?"
-              confirmLabel="Back up and restart"
-              onConfirm={() => apply.mutateAsync({})}
-            >
-              The server is backed up, then restarts with the newest compatible
-              builds.
-            </ConfirmAction>
-          ) : null}
+            The server is backed up, then restarts with the newest compatible
+            builds.
+          </ConfirmAction>
         </CardFooter>
       ) : null}
     </Card>
   );
 }
 
-function UpdateResults({
-  results,
+function ProjectRow({
+  slug,
+  detail,
+  loading,
+  removing,
+  onRemove,
 }: {
-  results: { project: string; compatible: boolean; version: string | null }[];
+  slug: string;
+  detail?: ProjectDetail;
+  loading: boolean;
+  removing: boolean;
+  onRemove: () => Promise<unknown>;
 }) {
-  if (results.length === 0) return null;
+  const title = detail?.title ?? slug;
   return (
-    <ul className="flex flex-col gap-1 rounded-2xl bg-muted/50 p-3 text-sm">
-      {results.map((result) => (
-        <li key={result.project} className="flex justify-between gap-4">
-          <span className="font-medium">{result.project}</span>
-          <span
-            className={
-              result.compatible
-                ? "font-mono text-xs leading-5"
-                : "text-destructive"
+    <Item size="sm" variant="muted" role="listitem">
+      <ItemMedia>
+        <ProjectIcon title={title} iconUrl={detail?.iconUrl} />
+      </ItemMedia>
+      <ItemContent className="min-w-0">
+        <ItemTitle>{title}</ItemTitle>
+        <ItemDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          {loading ? (
+            <Skeleton className="h-3.5 w-24" />
+          ) : detail ? (
+            <>
+              <span className="font-mono">
+                {detail.installedVersion ?? "Version unknown"}
+              </span>
+              {detail.updateAvailable && detail.latestVersion ? (
+                <Badge variant="secondary">
+                  Update available · {detail.latestVersion}
+                </Badge>
+              ) : null}
+              {!detail.compatible ? (
+                <Badge variant="destructive">Not compatible</Badge>
+              ) : null}
+            </>
+          ) : (
+            <span className="font-mono">{slug}</span>
+          )}
+        </ItemDescription>
+      </ItemContent>
+      <ItemActions>
+        <ConfirmAction
+          trigger={
+            <Button size="xs" variant="ghost" disabled={removing}>
+              Remove
+            </Button>
+          }
+          title={`Remove ${title}?`}
+          confirmLabel="Remove and restart"
+          destructive
+          onConfirm={onRemove}
+        >
+          A backup is taken first, then the server restarts without it.
+        </ConfirmAction>
+      </ItemActions>
+    </Item>
+  );
+}
+
+/** For control services without mods-details: the older on-demand check. */
+function LegacyUpdates({
+  server,
+  kind,
+}: {
+  server: Server;
+  kind: ProjectKind;
+}) {
+  const updates = useQuery({ ...updatesQuery(server.name), enabled: false });
+  const apply = useApplyProjects(server.name, "Updated and restarted");
+  const results = updates.data?.projects.filter(
+    (project) => project.kind === kind,
+  );
+
+  return (
+    <div className="flex flex-col gap-3">
+      {updates.isError ? (
+        <QueryError title="Update check failed" error={updates.error} />
+      ) : null}
+      {results && results.length > 0 ? (
+        <ul className="flex flex-col gap-1 rounded-2xl bg-muted/50 p-3 text-sm">
+          {results.map((result) => (
+            <li key={result.project} className="flex justify-between gap-4">
+              <span className="font-medium">{result.project}</span>
+              <span
+                className={
+                  result.compatible
+                    ? "font-mono text-xs leading-5"
+                    : "text-destructive"
+                }
+              >
+                {result.version ?? "No compatible build"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          disabled={updates.isFetching}
+          onClick={() => updates.refetch()}
+        >
+          {updates.isFetching ? <Spinner data-icon="inline-start" /> : null}
+          Check for updates
+        </Button>
+        {results ? (
+          <ConfirmAction
+            trigger={
+              <Button
+                className="ml-auto"
+                disabled={apply.isPending || results.some((r) => !r.compatible)}
+              >
+                Apply updates
+              </Button>
             }
+            title="Apply updates?"
+            confirmLabel="Back up and restart"
+            onConfirm={() => apply.mutateAsync({})}
           >
-            {result.version ?? "No compatible build"}
-          </span>
-        </li>
-      ))}
-    </ul>
+            The server is backed up, then restarts with the newest compatible
+            builds.
+          </ConfirmAction>
+        ) : null}
+      </div>
+    </div>
   );
 }

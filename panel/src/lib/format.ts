@@ -93,3 +93,31 @@ export function parsePlayers(text: string | null): PlayerCount | null {
 export function pluralize(count: number, singular: string, plural?: string) {
   return `${count} ${count === 1 ? singular : (plural ?? singular + "s")}`;
 }
+
+const compact = new Intl.NumberFormat(undefined, {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+export function formatCount(value: number) {
+  return compact.format(value);
+}
+
+const ACRONYMS = new Set(["nas", "nfs", "smb", "s3", "ssd", "hdd", "usb"]);
+
+/**
+ * A readable label for a storage location id. Display names from the control
+ * service (anything with a capital letter) pass through unchanged.
+ */
+export function locationLabel(id: string) {
+  if (/[A-Z ]/.test(id)) return id;
+  return id
+    .split(/[-_.]/)
+    .filter(Boolean)
+    .map((word) =>
+      ACRONYMS.has(word)
+        ? word.toUpperCase()
+        : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(" ");
+}

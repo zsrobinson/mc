@@ -10,7 +10,6 @@ import {
   CardContent,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from "@zsrobinson/shell/ui/card";
 import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
@@ -19,15 +18,29 @@ import { Textarea } from "@zsrobinson/shell/ui/textarea";
 import { downloadUrl } from "@/lib/api";
 import { useControlMutation } from "@/lib/mutations";
 import { fileQuery } from "@/lib/queries";
+import { isSecretPath } from "@/lib/secret-files";
 import { QueryError } from "../query-error";
+import { PathCrumbs } from "./path-crumbs";
 import { parentOf } from "./file-browser";
 
 export function FileEditor({ name, path }: { name: string; path: string }) {
-  const file = useQuery(fileQuery(name, path));
+  const hidden = isSecretPath(path);
+  const file = useQuery({ ...fileQuery(name, path), enabled: !hidden });
+  if (hidden)
+    return (
+      <QueryError
+        title="This file is not available here"
+        error={
+          new Error("Secret files cannot be viewed or edited in the panel.")
+        }
+      />
+    );
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle className="truncate font-mono text-sm">{path}</CardTitle>
+        <div className="flex min-h-8 min-w-0 items-center">
+          <PathCrumbs name={name} path={path} />
+        </div>
         <CardAction className="flex gap-2">
           <Button
             variant="ghost"

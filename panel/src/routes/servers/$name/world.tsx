@@ -15,9 +15,11 @@ function WorldPage() {
   const { name } = Route.useParams();
   return (
     <div className="grid items-start gap-4 md:grid-cols-2">
-      <DownloadWorldCard name={name} />
+      <div className="grid gap-4">
+        <DownloadWorldCard name={name} />
+        <ResetWorldCard name={name} />
+      </div>
       <ReplaceWorldCard name={name} />
-      <ResetWorldCard name={name} />
     </div>
   );
 }

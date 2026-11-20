@@ -15,6 +15,7 @@ import {
   formatBytes,
   formatDateTime,
   formatRelative,
+  locationLabel,
   parseTime,
 } from "@/lib/format";
 import { useControlMutation } from "@/lib/mutations";
@@ -130,7 +131,7 @@ function Locations({ backup }: { backup: Backup }) {
       {backup.locations?.length ? (
         backup.locations.map((location) => (
           <Badge key={location} variant="outline">
-            {location}
+            {locationLabel(location)}
           </Badge>
         ))
       ) : backup.replicated ? (

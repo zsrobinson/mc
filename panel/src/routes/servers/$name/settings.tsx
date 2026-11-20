@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { DnsCard } from "@/components/dns/dns-card";
-import { DeleteCard } from "@/components/settings/delete-card";
+import { DangerZone } from "@/components/settings/danger-zone";
 import { IconCard } from "@/components/settings/icon-card";
 import { PropertiesCard } from "@/components/settings/properties-card";
-import { RenameCard } from "@/components/settings/rename-card";
 import { ResourcesCard } from "@/components/settings/resources-card";
 import { ScheduleCard } from "@/components/settings/schedule-card";
 import { limitsQuery, propertiesQuery } from "@/lib/queries";
@@ -38,8 +37,11 @@ function SettingsPage() {
           />
           <DnsCard server={server} />
           <IconCard name={name} />
-          <RenameCard key={server.name} server={server} />
-          <DeleteCard name={name} />
+        </div>
+      ) : null}
+      {server ? (
+        <div className="lg:col-span-2">
+          <DangerZone server={server} />
         </div>
       ) : null}
     </div>

@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useState } from "react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
   Card,
@@ -7,16 +7,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@zsrobinson/shell/ui/card";
-import {
-  Field,
-  FieldDescription,
-  FieldLabel,
-} from "@zsrobinson/shell/ui/field";
-import { Input } from "@zsrobinson/shell/ui/input";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
 
 import { downloadUrl } from "@/lib/api";
 import { useUpload } from "@/lib/use-upload";
+import { FileDrop } from "../file-drop";
 
 const MAX_ICON_BYTES = 256 * 1024;
 
@@ -39,7 +34,20 @@ export function IconCard({ name }: { name: string }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const [missing, setMissing] = useState(false);
-  const id = useId();
+
+  async function choose(chosen: File | null) {
+    if (preview) URL.revokeObjectURL(preview);
+    setPreview(null);
+    setFile(null);
+    setError(null);
+    if (!chosen) return;
+    const problem = await checkIcon(chosen);
+    setError(problem);
+    if (!problem) {
+      setFile(chosen);
+      setPreview(URL.createObjectURL(chosen));
+    }
+  }
   const upload = useUpload("upload-icon", name, () => "Server icon updated");
   const current = `${downloadUrl("download-file", name, { path: "server-icon.png" })}&v=${version}`;
 
@@ -67,32 +75,25 @@ export function IconCard({ name }: { name: string }) {
             />
           )}
         </div>
-        <Field data-invalid={error ? true : undefined} className="min-w-0">
-          <FieldLabel htmlFor={id}>PNG file</FieldLabel>
-          <Input
-            id={id}
-            type="file"
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <FileDrop
             accept="image/png"
-            aria-invalid={error ? true : undefined}
-            onChange={async (event) => {
-              const chosen = event.target.files?.[0] ?? null;
-              if (preview) URL.revokeObjectURL(preview);
-              setPreview(null);
-              setFile(null);
-              setError(null);
-              if (!chosen) return;
-              const problem = await checkIcon(chosen);
-              setError(problem);
-              if (!problem) {
-                setFile(chosen);
-                setPreview(URL.createObjectURL(chosen));
-              }
-            }}
+            file={file}
+            onFile={choose}
+            disabled={upload.isPending}
+            invalid={Boolean(error)}
+            label="Choose a PNG"
           />
-          <FieldDescription>
+          <p
+            className={
+              error
+                ? "text-sm text-destructive"
+                : "text-sm text-muted-foreground"
+            }
+          >
             {error ?? "64 × 64 pixels, up to 256 KiB."}
-          </FieldDescription>
-        </Field>
+          </p>
+        </div>
       </CardContent>
       <CardFooter>
         <Button

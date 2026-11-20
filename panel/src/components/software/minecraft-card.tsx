@@ -22,9 +22,10 @@ import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
 
 import { useControlMutation } from "@/lib/mutations";
-import { versionsQuery } from "@/lib/queries";
-import type { Compatibility, Server } from "@/lib/types";
+import { upgradeCheckQuery, versionsQuery } from "@/lib/queries";
+import type { Server } from "@/lib/types";
 import { ConfirmAction } from "../confirm-action";
+import { QueryError } from "../query-error";
 import { CompatibilityList } from "./compatibility-list";
 
 /** Versions are newest first; only those above the current one are offered. */
@@ -42,16 +43,16 @@ export function MinecraftCard({ server }: { server: Server }) {
   const selected = target || candidates[0] || "";
   const selectId = useId();
 
-  const check = useControlMutation<{ version: string }, Compatibility>(
-    "check-upgrade",
-    server.name,
-  );
+  const check = useQuery({
+    ...upgradeCheckQuery(server.name, selected),
+    enabled: Boolean(selected),
+  });
   const upgrade = useControlMutation<{ version: string }, Server>(
     "apply-config",
     server.name,
     { success: (_, payload) => `Upgraded to ${payload.version}` },
   );
-  const result = check.data?.version === selected ? check.data : undefined;
+  const result = check.data;
   const ready =
     result?.projects.every((project) => project.compatible) ?? false;
 
@@ -74,7 +75,11 @@ export function MinecraftCard({ server }: { server: Server }) {
           </p>
         ) : (
           <Field>
-            <FieldLabel htmlFor={selectId}>Upgrade to</FieldLabel>
+            <FieldLabel htmlFor={selectId}>
+              {candidates.length === 1
+                ? `Minecraft ${candidates[0]} is available`
+                : "Upgrade to"}
+            </FieldLabel>
             <NativeSelect
               id={selectId}
               className="w-full"
@@ -94,17 +99,22 @@ export function MinecraftCard({ server }: { server: Server }) {
           </Field>
         )}
         {result ? <CompatibilityList result={result} /> : null}
+        {check.isError ? (
+          <QueryError title="Compatibility check failed" error={check.error} />
+        ) : null}
       </CardContent>
       {candidates.length > 0 ? (
         <CardFooter className="gap-2">
-          <Button
-            variant="outline"
-            disabled={!selected || check.isPending}
-            onClick={() => check.mutate({ version: selected })}
-          >
-            {check.isPending ? <Spinner data-icon="inline-start" /> : null}
-            Check compatibility
-          </Button>
+          {check.isFetching ? (
+            <span className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Spinner />
+              Checking mods and datapacks
+            </span>
+          ) : check.isError ? (
+            <Button variant="outline" onClick={() => check.refetch()}>
+              Check again
+            </Button>
+          ) : null}
           <ConfirmAction
             trigger={
               <Button

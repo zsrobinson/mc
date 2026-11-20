@@ -224,33 +224,35 @@ export function BansCard({ name, players }: CardProps) {
               />
             </Field>
           </div>
-          <ConfirmAction
-            trigger={
-              <Button
-                variant="destructive"
-                className="self-start"
-                disabled={!valid}
-              >
-                Ban
-              </Button>
-            }
-            title={`Ban ${target.trim()}?`}
-            confirmLabel="Ban"
-            destructive
-            onConfirm={async () => {
-              await action.mutateAsync({
-                action: kind === "player" ? "ban" : "ban-ip",
-                player: target.trim(),
-                reason: reason.trim() || undefined,
-              });
-              setTarget("");
-              setReason("");
-            }}
-          >
-            {kind === "player"
-              ? "They are disconnected and cannot join until unbanned."
-              : "Every player from this address is disconnected and blocked."}
-          </ConfirmAction>
+          {target.trim() ? (
+            <ConfirmAction
+              trigger={
+                <Button
+                  variant="destructive"
+                  className="self-start"
+                  disabled={!valid}
+                >
+                  Ban
+                </Button>
+              }
+              title={`Ban ${target.trim()}?`}
+              confirmLabel="Ban"
+              destructive
+              onConfirm={async () => {
+                await action.mutateAsync({
+                  action: kind === "player" ? "ban" : "ban-ip",
+                  player: target.trim(),
+                  reason: reason.trim() || undefined,
+                });
+                setTarget("");
+                setReason("");
+              }}
+            >
+              {kind === "player"
+                ? "They are disconnected and cannot join until unbanned."
+                : "Every player from this address is disconnected and blocked."}
+            </ConfirmAction>
+          ) : null}
         </div>
         <BanList
           title="Banned players"

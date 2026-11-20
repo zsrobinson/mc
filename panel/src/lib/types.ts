@@ -37,6 +37,32 @@ export type Server = ServerStatus & {
 
 export type Backup = BackupSnapshot;
 
+/** An installed mod or datapack, resolved against Modrinth. */
+export type ProjectDetail = {
+  slug: string;
+  title: string;
+  iconUrl?: string;
+  installedVersion: string | null;
+  latestVersion: string | null;
+  updateAvailable: boolean;
+  compatible: boolean;
+  downloads: number;
+};
+
+export type ProjectDetails = {
+  mods: ProjectDetail[];
+  datapacks: ProjectDetail[];
+};
+
+/** A Modrinth search hit with the fields the panel's search adds. */
+export type SearchHit = ModrinthHit & {
+  iconUrl?: string;
+  downloads?: number;
+  compatible?: boolean;
+};
+
+export type WorldInfo = { bytes: number; modifiedAt: string; version?: string };
+
 export type Session = { email: string; services: Service[] };
 
 export type PlayerRef = { name: string; uuid: string };
