@@ -1,3 +1,4 @@
+import { PageGrid, PageStack, SectionGroup } from "@zsrobinson/shell";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { DnsCard } from "@/components/dns/dns-card";
@@ -23,10 +24,13 @@ function SettingsPage() {
   const { data: server } = useServer(name);
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-      <PropertiesCard name={name} />
+    <PageGrid layout="wide">
+      <PageStack>
+        <PropertiesCard name={name} />
+        {server ? <DangerZone server={server} /> : null}
+      </PageStack>
       {server ? (
-        <div className="grid gap-4">
+        <SectionGroup>
           <ResourcesCard
             key={`${server.memory}:${server.port}`}
             server={server}
@@ -37,13 +41,8 @@ function SettingsPage() {
           />
           <DnsCard server={server} />
           <IconCard name={name} />
-        </div>
+        </SectionGroup>
       ) : null}
-      {server ? (
-        <div className="lg:col-span-2">
-          <DangerZone server={server} />
-        </div>
-      ) : null}
-    </div>
+    </PageGrid>
   );
 }

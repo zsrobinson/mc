@@ -9,7 +9,7 @@ import {
 } from "@zsrobinson/shell/blocks/page-states";
 
 import { AppBreadcrumbs } from "@/components/app-breadcrumbs";
-import { ServerNav } from "@/components/server-nav";
+import { useServerNavigation } from "@/components/server-nav";
 import { ApiError } from "@/lib/api";
 import { serversQuery, sessionQuery } from "@/lib/queries";
 
@@ -28,6 +28,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootLayout() {
   const session = useQuery(sessionQuery);
+  const navigation = useServerNavigation();
   const signedOut =
     session.error instanceof ApiError && session.error.status === 401;
 
@@ -36,7 +37,7 @@ function RootLayout() {
       name="Minecraft"
       email={session.data?.email}
       apps={session.isError ? [] : session.data?.services}
-      nav={<ServerNav />}
+      navGroups={navigation}
       breadcrumbs={<AppBreadcrumbs />}
     >
       {signedOut ? <SignedOut /> : <Outlet />}

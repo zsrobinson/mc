@@ -13,7 +13,6 @@ import { DnsBadge } from "@/components/dns/dns-badge";
 import { needsFix, useServerDns } from "@/components/dns/use-server-dns";
 import { PowerActions } from "@/components/power-actions";
 import { QueryError } from "@zsrobinson/shell/blocks/query-error";
-import { ServerTabs } from "@/components/server-tabs";
 import { StateBadge } from "@/components/state-badge";
 import { parsePlayers } from "@/lib/format";
 import { statusQuery } from "@/lib/queries";
@@ -32,7 +31,7 @@ function ServerLayout() {
   const server = useServer(name);
 
   return (
-    <Page className="gap-5">
+    <Page>
       <PageHeader>
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-center gap-3">
@@ -49,7 +48,6 @@ function ServerLayout() {
           {server.data ? <PowerActions server={server.data} /> : null}
         </PageActions>
       </PageHeader>
-      <ServerTabs name={name} />
       {server.isError && !server.data ? (
         <QueryError
           title="Server status could not be loaded"

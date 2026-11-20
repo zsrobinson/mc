@@ -1,3 +1,4 @@
+import { PageGrid, SectionGroup } from "@zsrobinson/shell";
 import { createFileRoute } from "@tanstack/react-router";
 
 import {
@@ -14,12 +15,12 @@ export const Route = createFileRoute("/servers/$name/world")({
 function WorldPage() {
   const { name } = Route.useParams();
   return (
-    <div className="grid items-start gap-4 md:grid-cols-2">
-      <div className="grid gap-4">
+    <PageGrid>
+      <SectionGroup>
         <DownloadWorldCard name={name} />
         <ResetWorldCard name={name} />
-      </div>
+      </SectionGroup>
       <ReplaceWorldCard name={name} />
-    </div>
+    </PageGrid>
   );
 }

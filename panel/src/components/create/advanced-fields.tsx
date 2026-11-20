@@ -106,7 +106,7 @@ export function AdvancedFields({
     onChange({ ...value, [key]: next });
 
   return (
-    <div id={id} className="grid gap-5 sm:grid-cols-2">
+    <div id={id} className="grid gap-4 sm:grid-cols-2">
       <Field>
         <FieldLabel htmlFor="server-version">Minecraft version</FieldLabel>
         <NativeSelect

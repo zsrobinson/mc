@@ -1,3 +1,4 @@
+import { PageStack } from "@zsrobinson/shell";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ChevronDownIcon } from "lucide-react";
@@ -79,7 +80,7 @@ export function CreateServerForm() {
   const showNameError = (touched || name !== "") && nameError;
 
   return (
-    <div className="flex max-w-xl flex-col gap-4">
+    <PageStack className="max-w-xl">
       {full && servers.data ? (
         <BudgetFull servers={servers.data} limits={limits.data} />
       ) : null}
@@ -95,7 +96,7 @@ export function CreateServerForm() {
           }}
         >
           <CardContent>
-            <FieldGroup className="gap-5">
+            <FieldGroup className="gap-4">
               <Field data-invalid={showNameError ? true : undefined}>
                 <FieldLabel htmlFor="server-name">Name</FieldLabel>
                 <Input
@@ -171,6 +172,6 @@ export function CreateServerForm() {
           </CardFooter>
         </form>
       </Card>
-    </div>
+    </PageStack>
   );
 }

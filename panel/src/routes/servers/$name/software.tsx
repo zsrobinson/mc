@@ -1,3 +1,4 @@
+import { PageGrid } from "@zsrobinson/shell";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { LoaderCard } from "@/components/software/loader-card";
@@ -18,9 +19,9 @@ function SoftwarePage() {
   const { data: server } = useServer(name);
   if (!server) return null;
   return (
-    <div className="grid items-start gap-4 md:grid-cols-2">
+    <PageGrid>
       <MinecraftCard server={server} />
       <LoaderCard server={server} />
-    </div>
+    </PageGrid>
   );
 }

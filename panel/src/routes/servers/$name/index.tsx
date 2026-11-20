@@ -1,3 +1,4 @@
+import { PageGrid, SectionGroup } from "@zsrobinson/shell";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader } from "@zsrobinson/shell/ui/card";
 import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
@@ -21,21 +22,23 @@ function OverviewPage() {
 
   if (!server) return <OverviewSkeleton />;
   return (
-    <div className="grid items-start gap-4 md:grid-cols-2">
-      <ResourcesCard server={server} />
-      <div className="grid gap-4">
-        <PlayersCard server={server} />
+    <PageGrid>
+      <SectionGroup>
+        <ResourcesCard server={server} />
         <ConnectionCard server={server} />
-      </div>
-      <SoftwareCard server={server} />
-      <BackupCard server={server} />
-    </div>
+      </SectionGroup>
+      <SectionGroup>
+        <PlayersCard server={server} />
+        <SoftwareCard server={server} />
+        <BackupCard server={server} />
+      </SectionGroup>
+    </PageGrid>
   );
 }
 
 function OverviewSkeleton() {
   return (
-    <div className="grid gap-4 md:grid-cols-2" aria-busy="true">
+    <PageGrid aria-busy="true">
       {[0, 1, 2, 3].map((key) => (
         <Card key={key} size="sm">
           <CardHeader>
@@ -48,6 +51,6 @@ function OverviewSkeleton() {
           </CardContent>
         </Card>
       ))}
-    </div>
+    </PageGrid>
   );
 }

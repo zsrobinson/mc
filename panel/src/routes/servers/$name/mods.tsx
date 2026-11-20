@@ -1,3 +1,4 @@
+import { PageGrid, PageStack, SectionGroup } from "@zsrobinson/shell";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   ToggleGroup,
@@ -25,7 +26,7 @@ function ModsPage() {
   const { data: server } = useServer(name);
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageStack>
       <ToggleGroup
         variant="outline"
         value={[kind]}
@@ -42,14 +43,14 @@ function ModsPage() {
         <ToggleGroupItem value="datapack">Datapacks</ToggleGroupItem>
       </ToggleGroup>
       {server ? (
-        <div className="grid items-start gap-4 md:grid-cols-2">
+        <PageGrid>
           <InstalledCard key={kind} server={server} kind={kind} />
-          <div className="grid gap-4">
+          <SectionGroup>
             <SearchCard key={kind} server={server} kind={kind} />
             {kind === "datapack" ? <DatapackUploadCard name={name} /> : null}
-          </div>
-        </div>
+          </SectionGroup>
+        </PageGrid>
       ) : null}
-    </div>
+    </PageStack>
   );
 }

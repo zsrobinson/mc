@@ -1,3 +1,4 @@
+import { SectionGroup } from "@zsrobinson/shell";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { ConsoleCard } from "@/components/console/console-card";
@@ -11,9 +12,9 @@ export const Route = createFileRoute("/servers/$name/console")({
 function ConsolePage() {
   const { name } = Route.useParams();
   return (
-    <div className="flex flex-col gap-4">
+    <SectionGroup>
       <ConsoleCard name={name} />
       <LogFilesCard name={name} />
-    </div>
+    </SectionGroup>
   );
 }

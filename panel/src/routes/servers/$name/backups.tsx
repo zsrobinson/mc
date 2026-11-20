@@ -58,7 +58,7 @@ function BackupsPage() {
   );
 
   return (
-    <Card size="sm" className="gap-3">
+    <Card size="sm">
       <CardHeader className="flex flex-wrap items-center justify-between gap-3">
         <CardTitle className="flex min-h-8 items-center whitespace-nowrap">
           Backups
