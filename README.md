@@ -119,3 +119,7 @@ UTC. Backup size history uses actual snapshot metadata because the exporter
 does not publish snapshot sizes. Retention belongs to the Prometheus deployment;
 longer ranges fill as samples accumulate. No infrastructure URL is compiled into
 the client or included in this repository.
+
+History responses expose numeric epoch milliseconds for every sample timestamp,
+start, end and step (`timeUnit: "milliseconds"`). Prometheus seconds are converted
+once at the server boundary. Chart formatters use Intl.DateTimeFormat on numbers.

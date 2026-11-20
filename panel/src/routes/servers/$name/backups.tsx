@@ -79,7 +79,7 @@ function BackupsPage() {
         loading={backups.isPending}
         data={(backups.data ?? [])
           .map((b) => ({
-            time: Date.parse(b.createdAt) / 1000,
+            time: Date.parse(b.createdAt),
             bytes: b.bytes,
           }))
           .sort((a, b) => a.time - b.time)}

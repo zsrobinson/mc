@@ -73,20 +73,26 @@ export function mountHistory<E extends Env>(app: Hono<E>) {
           const known = new Set(servers.map((s) => s.name));
           return [
             key,
-            result.data.result.filter((s) =>
-              key === "requests" || key === "errors"
-                ? !name
-                : known.has(s.metric.server) &&
-                  (!name || s.metric.server === name),
-            ),
+            result.data.result
+              .filter((s) =>
+                key === "requests" || key === "errors"
+                  ? !name
+                  : known.has(s.metric.server) &&
+                    (!name || s.metric.server === name),
+              )
+              .map((s) => ({
+                ...s,
+                values: s.values.map(([time, value]) => [time * 1000, value]),
+              })),
           ];
         }),
       );
       const data = {
         range,
-        start: end - seconds,
-        end,
-        step,
+        start: (end - seconds) * 1000,
+        end: end * 1000,
+        step: step * 1000,
+        timeUnit: "milliseconds",
         series: Object.fromEntries(entries),
       };
       if (cache.size > 100) cache.clear();

@@ -34,8 +34,7 @@ function Dashboard() {
   midnight.setUTCHours(0, 0, 0, 0);
   const today = points.filter(
     (p) =>
-      p.time * 1000 >= midnight.getTime() &&
-      names.some((name) => p[name] != null),
+      p.time >= midnight.getTime() && names.some((name) => p[name] != null),
   );
   const todayPeak = today.length
     ? Math.max(
