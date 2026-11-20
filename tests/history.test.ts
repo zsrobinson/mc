@@ -12,7 +12,7 @@ test("history limits queries, validates known servers, chooses steps and caches"
   let unavailable = false;
   const helper = createServer((req, res) => {
     assert.equal(req.headers.authorization, "Bearer test-secret");
-    res.end(JSON.stringify([{ name: "phelix" }]));
+    res.end(JSON.stringify([{ name: "alpha" }]));
   });
   const prometheus = createServer((req, res) => {
     const url = new URL(req.url!, "http://local");
@@ -31,7 +31,7 @@ test("history limits queries, validates known servers, chooses steps and caches"
         status: "success",
         data: {
           result: [
-            { metric: { server: "phelix" }, values: [[100, "2"]] },
+            { metric: { server: "alpha" }, values: [[100, "2"]] },
             { metric: { server: "unknown" }, values: [[100, "8"]] },
           ],
         },
@@ -52,7 +52,7 @@ test("history limits queries, validates known servers, chooses steps and caches"
       "range=forever",
       "range=__proto__",
       "query=up",
-      "server=phelix%22",
+      "server=alpha%22",
     ])
       assert.equal((await app.request("/api/history?" + query)).status, 400);
     assert.equal(
@@ -60,13 +60,13 @@ test("history limits queries, validates known servers, chooses steps and caches"
       404,
     );
     assert.equal(calls, 0);
-    const r = await app.request("/api/history?range=1h&server=phelix");
+    const r = await app.request("/api/history?range=1h&server=alpha");
     assert.equal(r.status, 200);
     const data = await r.json();
     assert.equal(data.step, 30);
     assert.equal(data.series.players.length, 1);
     assert.equal(calls, Object.keys(metrics).length);
-    await app.request("/api/history?range=1h&server=phelix");
+    await app.request("/api/history?range=1h&server=alpha");
     assert.equal(calls, Object.keys(metrics).length);
     unavailable = true;
     assert.equal((await app.request("/api/history?range=1h")).status, 502);
