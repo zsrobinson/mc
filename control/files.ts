@@ -1,10 +1,11 @@
+import { secretPath } from "./secrets";
+import { secureOpen } from "./paths";
+import { atomicText } from "./config";
 import { constants } from "node:fs";
 import {
   lstat,
   readdir,
   realpath,
-  open,
-  writeFile,
   mkdir,
   rename,
   stat,
@@ -45,6 +46,8 @@ export class Files {
   ) {}
   async path(name: string, input: string, creating = false) {
     pathSchema.parse(input);
+    if (secretPath(input))
+      throw Error("Secret files are not exposed by the helper");
     const root = join(await this.store.folder(name), "data");
     const result = resolve(root, input || ".");
     if (result !== root && !result.startsWith(root + "/"))
@@ -66,20 +69,75 @@ export class Files {
     }
     return result;
   }
+  async parent(name: string, path: string, create = false) {
+    pathSchema.parse(path);
+    const root = join(await this.store.folder(name), "data");
+    let handle = await secureOpen(root, root, true);
+    try {
+      for (const part of dirname(path)
+        .split("/")
+        .filter((x) => x && x !== ".")) {
+        const next = "/proc/self/fd/" + handle.fd + "/" + part;
+        if (create)
+          await mkdir(next, { mode: 0o700 }).catch((e) => {
+            if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+          });
+        const opened = await secureOpen(root, next, true);
+        await handle.close();
+        handle = opened;
+      }
+      return handle;
+    } catch (e) {
+      await handle.close();
+      throw e;
+    }
+  }
+  async setBinary(name: string, path: string, temp: string) {
+    const parent = await this.parent(name, path, true);
+    const base = "/proc/self/fd/" + parent.fd;
+    const stage =
+      basename(path) +
+      "." +
+      (await import("node:crypto")).randomUUID() +
+      ".upload";
+    try {
+      await copyFile(temp, base + "/" + stage, constants.COPYFILE_EXCL);
+      await rename(base + "/" + stage, base + "/" + basename(path));
+      return { uploaded: path };
+    } finally {
+      await parent.close();
+    }
+  }
   async list(name: string, path = "") {
     const dir = await this.path(name, path);
     if (!(await stat(dir)).isDirectory()) throw Error("Choose a directory");
+    const handle = await secureOpen(
+      join(this.store.root, name, "data"),
+      dir,
+      true,
+    );
     const entries = [];
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
-      if (entry.isSymbolicLink()) continue;
-      const info = await lstat(join(dir, entry.name));
-      entries.push({
-        name: entry.name,
-        path: [path, entry.name].filter(Boolean).join("/"),
-        type: entry.isDirectory() ? ("directory" as const) : ("file" as const),
-        bytes: info.size,
-        modifiedAt: info.mtime.toISOString(),
-      });
+    try {
+      for (const entry of await readdir("/proc/self/fd/" + handle.fd, {
+        withFileTypes: true,
+      })) {
+        if (entry.isSymbolicLink() || secretPath(entry.name)) continue;
+        const info = await lstat(
+          "/proc/self/fd/" + handle.fd + "/" + entry.name,
+        );
+        if (info.isSymbolicLink()) continue;
+        entries.push({
+          name: entry.name,
+          path: [path, entry.name].filter(Boolean).join("/"),
+          type: entry.isDirectory()
+            ? ("directory" as const)
+            : ("file" as const),
+          bytes: info.size,
+          modifiedAt: info.mtime.toISOString(),
+        });
+      }
+    } finally {
+      await handle.close();
     }
     return {
       path,
@@ -97,7 +155,7 @@ export class Files {
       /rcon|secret|credential|token|password|private.?key/i.test(basename(file))
     )
       throw Error("Only non-secret text configuration files can be viewed");
-    const handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const handle = await secureOpen(join(this.store.root, name, "data"), file);
     try {
       const root = join(this.store.root, name, "data");
       const actual = await realpath("/proc/self/fd/" + handle.fd);
@@ -120,11 +178,15 @@ export class Files {
       /rcon|secret|credential|token|password|private.?key/i.test(basename(file))
     )
       throw Error("Only non-secret text configuration files can be edited");
-    await mkdir(dirname(file), { recursive: true, mode: 0o700 });
-    await writeFile(file, text, {
-      mode: 0o600,
-      flag: (await exists(file)) ? "w" : "wx",
-    });
+    const parent = await this.parent(name, path, true);
+    try {
+      await atomicText(
+        "/proc/self/fd/" + parent.fd + "/" + basename(file),
+        text,
+      );
+    } finally {
+      await parent.close();
+    }
     return { path };
   }
   async remove(name: string, path: string) {
@@ -140,7 +202,19 @@ export class Files {
       randomUUID(),
     );
     await mkdir(dirname(retained), { recursive: true, mode: 0o700 });
-    await rename(file, retained);
+    const parent = await secureOpen(
+      join(this.store.root, name, "data"),
+      dirname(file),
+      true,
+    );
+    try {
+      await rename(
+        "/proc/self/fd/" + parent.fd + "/" + basename(file),
+        retained,
+      );
+    } finally {
+      await parent.close();
+    }
     return { retained: true, path };
   }
   async upload(name: string, path: string, temp: string) {
@@ -153,27 +227,31 @@ export class Files {
       /rcon|secret|credential|token|password|private.?key/i.test(basename(path))
     )
       throw Error("Use the dedicated world/properties action");
-    await mkdir(dirname(target), { recursive: true, mode: 0o700 });
+
     if (await exists(target))
       throw Error("File already exists; use an explicit edit or delete action");
-    await copyFile(temp, target, constants.COPYFILE_EXCL);
+    const parent = await this.parent(name, path, true);
+    try {
+      await copyFile(
+        temp,
+        "/proc/self/fd/" + parent.fd + "/" + basename(target),
+        constants.COPYFILE_EXCL,
+      );
+    } finally {
+      await parent.close();
+    }
     return { uploaded: path };
   }
   async logs(name: string) {
     const dir = join(await this.store.folder(name), "data/logs");
     if (!(await exists(dir))) return [];
-    const result = [];
-    for (const entry of await readdir(dir, { withFileTypes: true })) {
-      if (!entry.isFile() || !/^[-a-zA-Z0-9_.]+\.(log|gz)$/.test(entry.name))
-        continue;
-      const info = await stat(join(dir, entry.name));
-      result.push({
-        name: entry.name,
-        bytes: info.size,
-        modifiedAt: info.mtime.toISOString(),
-      });
-    }
-    return result.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
+    const listing = await this.list(name, "logs");
+    return listing.entries
+      .filter(
+        (e) => e.type === "file" && /^[-a-zA-Z0-9_.]+\.(log|gz)$/.test(e.name),
+      )
+      .map((e) => ({ name: e.name, bytes: e.bytes, modifiedAt: e.modifiedAt }))
+      .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
   }
   async download(name: string, path: string) {
     if (path === "server.properties") {
@@ -186,6 +264,11 @@ export class Files {
       /rcon|secret|credential|token|password|private.?key/i.test(basename(file))
     )
       throw Error("File cannot be downloaded");
-    return { file, filename: basename(file), type: "application/octet-stream" };
+    const handle = await secureOpen(join(this.store.root, name, "data"), file);
+    return {
+      stream: handle.createReadStream(),
+      filename: basename(file),
+      type: "application/octet-stream",
+    };
   }
 }

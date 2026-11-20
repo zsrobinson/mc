@@ -1,3 +1,5 @@
+import { secretPath } from "./secrets";
+import { secureOpen } from "./paths";
 import tarStream from "tar-stream";
 import { createReadStream, createWriteStream } from "node:fs";
 import { readdir, lstat, rename, chmod } from "node:fs/promises";
@@ -6,9 +8,7 @@ import { createGzip, createGunzip } from "node:zlib";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { exists } from "./config";
-const excluded = (name: string) =>
-  name === "rcon.secret" ||
-  /(^|\/)\.?rcon[^/]*\.(secret|cfg|conf|env|yaml|yml)$/i.test(name);
+const excluded = secretPath;
 class Redactor extends Transform {
   private tail = Buffer.alloc(0);
   private readonly secret: Buffer;
@@ -66,8 +66,25 @@ export async function createArchive(
           (e) => (e ? reject(e) : resolve()),
         ),
       );
-      for (const name of await readdir(file)) await add(relative + "/" + name);
+      const directory = await secureOpen(
+        relative === "data" || relative.startsWith("data/")
+          ? join(root, "data")
+          : root,
+        file,
+        true,
+      );
+      let names: string[];
+      try {
+        names = await readdir("/proc/self/fd/" + directory.fd);
+      } finally {
+        await directory.close();
+      }
+      for (const name of names) await add(relative + "/" + name);
     } else if (info.isFile()) {
+      const handle = await secureOpen(
+        relative.startsWith("data/") ? join(root, "data") : root,
+        file,
+      );
       const entry = pack.entry({
         name: relative,
         type: "file",
@@ -75,7 +92,7 @@ export async function createArchive(
         mode: 0o600,
         mtime: info.mtime,
       });
-      await pipeline(createReadStream(file), new Redactor(secret), entry);
+      await pipeline(handle.createReadStream(), new Redactor(secret), entry);
     }
   }
   try {
@@ -85,6 +102,7 @@ export async function createArchive(
       "compose.json",
       "managed-datapacks.json",
       "schedule.json",
+      "backup-aliases.json",
     ])
       await add(name);
     pack.finalize();

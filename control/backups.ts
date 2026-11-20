@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { createHash, randomBytes } from "node:crypto";
 import { pipeline } from "node:stream/promises";
 import { z } from "zod";
-import { atomic, exists } from "./config";
+import { atomic, exists, nameSchema } from "./config";
 import { Docker, command } from "./docker";
 import type { BackupSnapshot } from "../src/domain";
 export const targetsSchema = z
@@ -22,6 +22,7 @@ export const targetsSchema = z
     z
       .object({
         host: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_.-]*$/),
+        label: z.string().min(1).max(32).optional(),
         path: z
           .string()
           .min(1)
@@ -129,40 +130,51 @@ export class Backups {
   ) {}
   async list(name: string): Promise<BackupSnapshot[]> {
     await this.docker.store.folder(name);
-    const base = join(this.root, name);
-    if (!(await exists(base))) return [];
+    const aliasFile = join(
+      await this.docker.store.folder(name),
+      "backup-aliases.json",
+    );
+    const aliases: string[] = (await exists(aliasFile))
+      ? JSON.parse(await readFile(aliasFile, "utf8"))
+      : [];
     const snapshots: BackupSnapshot[] = [];
-    for (const id of (await readdir(base))
-      .filter((id) => snapshotPattern.test(id))
-      .sort()
-      .reverse()) {
-      const path = join(base, id);
-      if (!(await exists(join(path, "COMPLETE")))) continue;
-      const info = await stat(join(path, "world.tar.gz"));
-      snapshots.push({
-        id,
-        createdAt:
-          id.slice(0, 4) +
-          "-" +
-          id.slice(4, 6) +
-          "-" +
-          id.slice(6, 8) +
-          "T" +
-          id.slice(9, 11) +
-          ":" +
-          id.slice(11, 13) +
-          ":" +
-          id.slice(13, 15) +
-          "Z",
-        bytes: info.size,
-        replicated: await exists(join(path, "replicated.json")),
-        locations: this.targets.map((t) => t.host),
-        ...((await exists(join(path, "snapshot.json")))
-          ? JSON.parse(await readFile(join(path, "snapshot.json"), "utf8"))
-          : {}),
-      });
+    for (const sourceName of [...new Set([name, ...aliases])]) {
+      nameSchema.parse(sourceName);
+      const base = join(this.root, sourceName);
+      if (!(await exists(base))) continue;
+      for (const id of (await readdir(base))
+        .filter((id) => snapshotPattern.test(id))
+        .sort()
+        .reverse()) {
+        const path = join(base, id);
+        if (!(await exists(join(path, "COMPLETE")))) continue;
+        const info = await stat(join(path, "world.tar.gz"));
+        snapshots.push({
+          id,
+          sourceName,
+          createdAt:
+            id.slice(0, 4) +
+            "-" +
+            id.slice(4, 6) +
+            "-" +
+            id.slice(6, 8) +
+            "T" +
+            id.slice(9, 11) +
+            ":" +
+            id.slice(11, 13) +
+            ":" +
+            id.slice(13, 15) +
+            "Z",
+          bytes: info.size,
+          replicated: await exists(join(path, "replicated.json")),
+          locations: this.targets.map((t) => t.label ?? t.host),
+          ...((await exists(join(path, "snapshot.json")))
+            ? JSON.parse(await readFile(join(path, "snapshot.json"), "utf8"))
+            : {}),
+        });
+      }
     }
-    return snapshots;
+    return snapshots.sort((a, b) => b.id.localeCompare(a.id));
   }
   async replicate(
     path: string,
@@ -273,7 +285,9 @@ export class Backups {
     });
     for (const old of retentionCandidates(await this.list(name))) {
       for (const target of this.targets) {
-        const remote = target.path + "/" + name + "/" + old;
+        const sourceName =
+          (await this.list(name)).find((s) => s.id === old)?.sourceName ?? name;
+        const remote = target.path + "/" + sourceName + "/" + old;
         await command(
           [
             "ssh",
@@ -288,7 +302,9 @@ export class Backups {
           60000,
         );
       }
-      await rm(join(base, old), { recursive: true });
+      const sourceName =
+        (await this.list(name)).find((s) => s.id === old)?.sourceName ?? name;
+      await rm(join(this.root, sourceName, old), { recursive: true });
     }
     return { snapshot: id, replicated: true as const };
   }

@@ -41,6 +41,8 @@ export function helperApp(control: Control, secret: string) {
   app.post("/", async (c) => {
     try {
       const input = requestSchema.parse(await c.req.json());
+      if (input.verb === "create-progress")
+        return c.json(control.progress(input.name || ""));
       const started = Date.now();
       try {
         const result = await control.dispatch(input);
@@ -98,7 +100,7 @@ export function helperApp(control: Control, secret: string) {
       };
       if ("text" in result && result.text !== undefined)
         return new Response(result.text, { headers });
-      const stream = createReadStream(result.file!);
+      const stream = result.stream ?? createReadStream(result.file!);
       if ("temporary" in result && result.temporary)
         stream.once("close", () => {
           rm(dirname(result.file!), { recursive: true, force: true }).catch(
@@ -188,6 +190,11 @@ export async function main() {
   });
   const docker = new Docker(store, upstream, Number(required("MC_CPUS")));
   await docker.rootless();
+  if (
+    process.env.MC_CGROUP_PARENT &&
+    !/^[a-zA-Z0-9_.-]+\.slice$/.test(process.env.MC_CGROUP_PARENT)
+  )
+    throw Error("Invalid Minecraft cgroup parent");
   const backups = new Backups(
     resolve(required("MC_BACKUP_ROOT")),
     docker,
@@ -206,6 +213,8 @@ export async function main() {
         tokenFile: required("MC_DNS_TOKEN_FILE"),
         joinDomain: required("MC_JOIN_DOMAIN"),
         target: required("MC_DIRECT_HOST"),
+        portMin: store.limits.portMin,
+        portMax: store.limits.portMax,
       })
     : new Dns();
   const control = new Control(store, docker, upstream, backups, addresses, dns);

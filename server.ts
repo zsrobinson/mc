@@ -1,3 +1,4 @@
+import { modrinthIcon } from "./web/modrinth";
 import { metadata } from "./control/telemetry";
 import { helperResponse } from "./web/helper-client";
 import { bodyLimit } from "hono/body-limit";
@@ -57,6 +58,21 @@ app.get("/api/session", (c) =>
     services: JSON.parse(readFileSync(required("SERVICE_MANIFEST"), "utf8")),
   }),
 );
+app.get("/api/modrinth-icon/:project", async (c) => {
+  try {
+    const icon = await modrinthIcon(c.req.param("project"));
+    if (!icon) return c.body(null, 204);
+    return new Response(Uint8Array.from(icon.data), {
+      headers: {
+        "Content-Type": icon.type,
+        "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch {
+    return c.body(null, 404);
+  }
+});
 app.get("/api/search", async (c) => {
   const kind = c.req.query("kind") === "datapack" ? "datapack" : "mod";
   const facets =
@@ -68,6 +84,9 @@ app.get("/api/search", async (c) => {
           ["client_side:optional", "client_side:unsupported"],
         ]
       : [["project_type:datapack"]];
+  const version = c.req.query("version");
+  if (version && /^[0-9.]+$/.test(version))
+    facets.push(["versions:" + version]);
   const q = new URLSearchParams({
     query: (c.req.query("q") || "").slice(0, 100),
     limit: "12",
@@ -76,7 +95,16 @@ app.get("/api/search", async (c) => {
   const r = await fetch("https://api.modrinth.com/v2/search?" + q, {
     headers: { "User-Agent": "mc-panel/1.0" },
   });
-  return c.json(await r.json(), r.ok ? 200 : 502);
+  const data = (await r.json()) as {
+    hits?: { slug: string; [key: string]: unknown }[];
+  };
+  if (data.hits)
+    data.hits = data.hits.map((hit) => ({
+      ...hit,
+      iconUrl: "/api/modrinth-icon/" + encodeURIComponent(hit.slug),
+      ...(version ? { compatible: true } : {}),
+    }));
+  return c.json(data, r.ok ? 200 : 502);
 });
 app.use(
   "/api/control",

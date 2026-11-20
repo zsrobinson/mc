@@ -1,3 +1,6 @@
+import { secureOpen } from "./paths";
+import { chmod } from "node:fs/promises";
+import { quietRconLogging } from "./logging";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { readFile, writeFile, mkdir, unlink } from "node:fs/promises";
@@ -31,6 +34,13 @@ export class Docker {
     readonly cpus: number,
     readonly run = command,
   ) {}
+  async activeNames() {
+    const active = new Set<string>();
+    for (const c of await this.store.list())
+      if ((await this.container(c.name, true))?.State.Running)
+        active.add(c.name);
+    return active;
+  }
   async rootless() {
     const options: string[] = JSON.parse(
       await this.run([
@@ -103,6 +113,7 @@ export class Docker {
     return r.stdout + r.stderr;
   }
   async lifecycle(verb: "start" | "stop" | "restart", name: string) {
+    this.metricCache.delete(name);
     await this.run([
       "docker",
       verb,
@@ -111,9 +122,26 @@ export class Docker {
     ]);
   }
   async kill(name: string) {
+    this.metricCache.delete(name);
     await this.run(["docker", "kill", await this.id(name)]);
   }
+  private metricCache = new Map<
+    string,
+    {
+      at: number;
+      result: Promise<Awaited<ReturnType<Docker["sampleMetrics"]>>>;
+    }
+  >();
   async metrics(name: string, limit: number) {
+    let cached = this.metricCache.get(name);
+    if (!cached || Date.now() - cached.at >= 30000) {
+      cached = { at: Date.now(), result: this.sampleMetrics(name, limit) };
+      this.metricCache.set(name, cached);
+      cached.result.catch(() => this.metricCache.delete(name));
+    }
+    return cached.result;
+  }
+  private async sampleMetrics(name: string, limit: number) {
     const info = await this.container(name, true);
     const empty = {
       uptimeSeconds: null,
@@ -168,8 +196,42 @@ export class Docker {
       mspt,
     };
   }
+  async waitReady(name: string, timeout = 180000) {
+    const end = Date.now() + timeout;
+    while (Date.now() < end) {
+      const info = await this.container(name, true);
+      if (info?.State.Running) {
+        try {
+          const result = await this.rcon(name, "list");
+          if (/players online/i.test(result)) {
+            const root = join(await this.store.folder(name), "data");
+            for (const filename of [".rcon-cli.env", ".rcon-cli.yaml"]) {
+              const file = join(root, filename);
+              if (await exists(file)) {
+                const handle = await secureOpen(root, file);
+                try {
+                  await handle.chmod(0o600);
+                } finally {
+                  await handle.close();
+                }
+              }
+            }
+            return;
+          }
+        } catch {
+          /* RCON starts after world loading. */
+        }
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    throw Error("Server did not become ready; check its console");
+  }
   async compose(c: ServerConfig) {
     const dir = await this.store.folder(c.name);
+    await mkdir(join(dir, "data"), { recursive: true, mode: 0o700 });
+    await chmod(dir, 0o700);
+    await chmod(join(dir, "data"), 0o700);
+    await quietRconLogging(join(dir, "data"));
     const secret = join(dir, "rcon.secret");
     if (!(await exists(secret)))
       await writeFile(secret, randomBytes(32).toString("hex"), { mode: 0o600 });
@@ -195,6 +257,8 @@ export class Docker {
       MAX_PLAYERS: "20",
       VIEW_DISTANCE: "10",
       ENABLE_ROLLING_LOGS: "true",
+      GENERATE_LOG4J2_CONFIG: "TRUE",
+      REGENERATE_LOG4J2: "FALSE",
     };
     if (c.fabricLoader) env.FABRIC_LOADER_VERSION = c.fabricLoader;
     const urls: string[] = [],
@@ -244,6 +308,9 @@ export class Docker {
       services: {
         server: {
           image: "itzg/minecraft-server:" + c.javaTag,
+          ...(process.env.MC_CGROUP_PARENT
+            ? { cgroup_parent: process.env.MC_CGROUP_PARENT }
+            : {}),
           labels: { "io.mc.managed": "true", "io.mc.name": c.name },
           restart: "unless-stopped",
           mem_limit: c.memory + 512 + "m",
@@ -268,6 +335,7 @@ export class Docker {
     });
   }
   async recreate(c: ServerConfig) {
+    this.metricCache.delete(c.name);
     const old = await this.container(c.name, true);
     if (old?.State.Running)
       await this.run(["docker", "stop", "--time", "120", old.Id]);

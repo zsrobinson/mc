@@ -1,3 +1,5 @@
+import { secretPath } from "./secrets";
+import { secureOpen } from "./paths";
 import { Reader, ZipReader, ZipWriter, configure } from "@zip.js/zip.js";
 import { createReadStream, createWriteStream } from "node:fs";
 import {
@@ -67,8 +69,16 @@ export class Worlds {
     await mkdir(dir, { recursive: true, mode: 0o700 });
     return mkdtemp(join(dir, prefix + "-"));
   }
-  async meta(path: string) {
-    const data = await readFile(path);
+  async meta(path: string, root = dirname(path)) {
+    const handle = await secureOpen(root, path);
+    let data: Buffer;
+    try {
+      if ((await handle.stat()).size > 8 * 1024 * 1024)
+        throw Error("World metadata too large");
+      data = await handle.readFile();
+    } finally {
+      await handle.close();
+    }
     if (data.length > 8 * 1024 * 1024)
       throw Error("World metadata is too large");
     const plain =
@@ -179,7 +189,10 @@ export class Worlds {
     const dir = await this.docker.store.folder(name);
     let seed = input.seed ?? "";
     if (input.sameSeed) {
-      const meta = await this.meta(join(dir, "data/world/level.dat"));
+      const meta = await this.meta(
+        join(dir, "data/world/level.dat"),
+        join(dir, "data"),
+      );
       const original = meta.WorldGenSettings?.seed ?? meta.RandomSeed;
       if (original === undefined) throw Error("World seed unavailable");
       seed = String(original);
@@ -196,6 +209,41 @@ export class Worlds {
     await this.docker.recreate(await this.docker.store.read(name));
     return { reset: true };
   }
+  async info(name: string) {
+    const root = join(await this.docker.store.folder(name), "data");
+    let bytes = 0,
+      modified = 0;
+    const walk = async (path: string) => {
+      const handle = await secureOpen(root, path, true);
+      try {
+        const base = "/proc/self/fd/" + handle.fd;
+        for (const entry of await readdir(base, { withFileTypes: true })) {
+          if (entry.isSymbolicLink()) continue;
+          const next = base + "/" + entry.name;
+          if (entry.isDirectory()) await walk(next);
+          else if (entry.isFile()) {
+            const file = await secureOpen(root, next);
+            try {
+              const info = await file.stat();
+              bytes += info.size;
+              modified = Math.max(modified, info.mtimeMs);
+            } finally {
+              await file.close();
+            }
+          }
+        }
+      } finally {
+        await handle.close();
+      }
+    };
+    await walk(join(root, "world"));
+    const meta = await this.meta(join(root, "world/level.dat"), root);
+    return {
+      bytes,
+      modifiedAt: new Date(modified).toISOString(),
+      version: meta.Version?.Name,
+    };
+  }
   async zip(name: string) {
     const info = await this.docker.container(name, true);
     const live = info?.State.Running;
@@ -211,22 +259,33 @@ export class Worlds {
         { level: 1 },
       );
       const root = join(await this.docker.store.folder(name), "data/world");
+      const dataRoot = join(await this.docker.store.folder(name), "data");
       const walk = async (dir: string, prefix: string) => {
-        for (const item of await readdir(dir, { withFileTypes: true })) {
-          if (item.isSymbolicLink())
-            throw Error("World contains a symbolic link");
-          const source = join(dir, item.name),
-            target = prefix + item.name;
-          if (item.isDirectory()) await walk(source, target + "/");
-          else if (item.isFile())
-            await writer.add(
-              target,
-              Readable.toWeb(
-                createReadStream(source),
-              ) as ReadableStream<Uint8Array>,
-            );
+        const directory = await secureOpen(dataRoot, dir, true);
+        try {
+          const base = "/proc/self/fd/" + directory.fd;
+          for (const item of await readdir(base, { withFileTypes: true })) {
+            if (secretPath(item.name)) continue;
+            if (item.isSymbolicLink())
+              throw Error("World contains a symbolic link");
+            const source = base + "/" + item.name,
+              target = prefix + item.name;
+            if (item.isDirectory()) await walk(source, target + "/");
+            else if (item.isFile()) {
+              const file = await secureOpen(dataRoot, source);
+              await writer.add(
+                target,
+                Readable.toWeb(
+                  file.createReadStream(),
+                ) as ReadableStream<Uint8Array>,
+              );
+            }
+          }
+        } finally {
+          await directory.close();
         }
       };
+
       await walk(root, "world/");
       await writer.close();
       return {
@@ -242,8 +301,9 @@ export class Worlds {
   async restore(name: string, snapshot: string, payload: unknown) {
     confirmed(name, payload);
     const list = await this.backups.list(name);
-    if (!list.some((s) => s.id === snapshot)) throw Error("Snapshot not found");
-    const base = join(this.backups.root, name, snapshot);
+    const selected = list.find((s) => s.id === snapshot);
+    if (!selected) throw Error("Snapshot not found");
+    const base = join(this.backups.root, selected.sourceName ?? name, snapshot);
     const archive = join(base, "world.tar.gz");
     const expected = (await readFile(join(base, "SHA256SUMS"), "utf8")).split(
       /\s+/,
@@ -273,8 +333,15 @@ export class Worlds {
     const c = configSchema.parse(
       JSON.parse(await readFile(join(stage, "config.json"), "utf8")),
     );
-    if (c.name !== name) throw Error("Backup belongs to a different server");
-    await this.docker.store.validate(c);
+    if (c.name !== name && c.name !== selected.sourceName)
+      throw Error("Backup belongs to a different server");
+    c.name = name;
+    await this.docker.store.validate(
+      c,
+      false,
+      undefined,
+      await this.docker.activeNames(),
+    );
     if (c.javaTag !== (await this.docker.upstream.java(c.version)))
       throw Error("Backup Java mismatch");
     await this.backups.backup(name, "pre-destructive");
@@ -311,7 +378,11 @@ export class Worlds {
       snapshot ? s.id === snapshot : s.replicated,
     );
     if (!selected) throw Error("Verified snapshot not found");
-    const base = join(this.backups.root, name, selected.id);
+    const base = join(
+      this.backups.root,
+      selected.sourceName ?? name,
+      selected.id,
+    );
     const archive = join(base, "world.tar.gz");
     const expected = (await readFile(join(base, "SHA256SUMS"), "utf8")).split(
       /\s+/,
@@ -394,9 +465,14 @@ export class Worlds {
       throw e;
     }
   }
-  async removeServer(name: string, payload: unknown) {
+  async removeServer(
+    name: string,
+    payload: unknown,
+    beforeRetain?: () => Promise<unknown>,
+  ) {
     confirmed(name, payload);
     await this.backups.backup(name, "pre-destructive");
+    if (beforeRetain) await beforeRetain();
     const info = await this.docker.container(name, true);
     if (info) {
       if (info.State.Running) await this.docker.lifecycle("stop", name);

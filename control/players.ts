@@ -1,5 +1,6 @@
+import type { Files } from "./files";
 import { join } from "node:path";
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { z } from "zod";
 import { Docker } from "./docker";
 import { Properties, serializeProperties } from "./properties";
@@ -31,10 +32,14 @@ export class Players {
     readonly docker: Docker,
     readonly properties: Properties,
     readonly upstream: Upstream,
+    readonly files: Files,
   ) {}
   async json(name: string, file: string): Promise<Player[]> {
     const path = join(await this.docker.store.folder(name), "data", file);
-    return (await exists(path)) ? JSON.parse(await readFile(path, "utf8")) : [];
+    if (!(await exists(path))) return [];
+    const result = JSON.parse((await this.files.read(name, file)).text);
+    if (!Array.isArray(result)) throw Error("Invalid player data");
+    return result;
   }
   async list(name: string) {
     const info = await this.docker.container(name, true);

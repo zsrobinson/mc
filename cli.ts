@@ -6,6 +6,8 @@ import { pipeline } from "node:stream/promises";
 const help = `mcctl — Minecraft management through the same API as the panel
 
 Usage:
+  mcctl create NAME [--json]
+  mcctl console SERVER [--json]
   mcctl list [--json]
   mcctl VERB [SERVER] [--data JSON | --data-file FILE] [--confirm] [--confirm-name SERVER] [--json]
   mcctl download-world|download-file|download-log|download-backup SERVER --out FILE [--path PATH] [--snapshot ID]
@@ -35,7 +37,9 @@ if (!argv.length || ["help", "--help", "-h"].includes(argv[0])) {
   console.log(help);
   process.exit(0);
 }
-const verb = argv.shift()!;
+let verb = argv.shift()!;
+const quickCreate = verb === "create";
+if (quickCreate) verb = "create-server";
 const name = argv[0] && !argv[0].startsWith("--") ? argv.shift() : undefined;
 const flags: Record<string, string | boolean> = {};
 try {
@@ -43,6 +47,7 @@ try {
     const key = argv.shift()!;
     if (
       ![
+        "--follow",
         "--json",
         "--confirm",
         "--confirm-name",
@@ -55,7 +60,7 @@ try {
       ].includes(key)
     )
       throw Error("Unknown option " + key);
-    if (["--json", "--confirm"].includes(key)) flags[key] = true;
+    if (["--json", "--confirm", "--follow"].includes(key)) flags[key] = true;
     else {
       const value = argv.shift();
       if (!value || value.startsWith("--"))
@@ -75,6 +80,10 @@ try {
     : flags["--data"]
       ? JSON.parse(String(flags["--data"]))
       : {};
+  if (quickCreate) {
+    if (!name) throw Error("Choose a server name");
+    payload.name = name;
+  }
   if (flags["--confirm"]) payload.confirm = true;
   if (flags["--confirm-name"]) payload.confirmName = flags["--confirm-name"];
   const destructive = new Set([
@@ -103,7 +112,13 @@ try {
   let path = "/",
     method = "POST";
   let body: string | undefined;
-  if (binary) {
+  const streaming =
+    verb === "console" || (verb === "logs" && flags["--follow"]);
+  if (streaming) {
+    if (!name) throw Error("Choose a server name");
+    path = "/console?" + new URLSearchParams({ name });
+    method = "GET";
+  } else if (binary) {
     const query = new URLSearchParams({ verb, name: name || "" });
     for (const flag of ["--path", "--snapshot", "--confirm", "--confirm-name"])
       if (flags[flag])
@@ -145,6 +160,28 @@ try {
             }
             throw Error(message);
           }
+          if (streaming) {
+            let buffered = "";
+            res.setEncoding("utf8");
+            for await (const chunk of res) {
+              buffered += chunk;
+              let end;
+              while ((end = buffered.indexOf("\n\n")) >= 0) {
+                const frame = buffered.slice(0, end);
+                buffered = buffered.slice(end + 2);
+                const event = frame.match(/^event: ?(.+)$/m)?.[1];
+                const data = frame.match(/^data: ?(.+)$/m)?.[1];
+                if (event === "logs" && data) {
+                  const value = JSON.parse(data);
+                  if (flags["--json"])
+                    console.log(JSON.stringify({ event, text: value.text }));
+                  else process.stdout.write(value.text + "\n");
+                }
+              }
+            }
+            resolve();
+            return;
+          }
           if (verb.startsWith("download-")) {
             await pipeline(
               res,
@@ -180,7 +217,12 @@ try {
     else req.end(body);
   });
 } catch (e) {
-  const message = e instanceof Error ? e.message : "Operation failed";
+  const message =
+    e instanceof SyntaxError
+      ? "Invalid JSON payload"
+      : e instanceof Error
+        ? e.message
+        : "Operation failed";
   if (flags["--json"]) console.error(JSON.stringify({ error: message }));
   else console.error("mcctl: " + message);
   process.exitCode = 1;

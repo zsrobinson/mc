@@ -1,6 +1,7 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { secureOpen } from "./paths";
 import { join } from "node:path";
 import { z } from "zod";
+import { atomicText } from "./config";
 import type { ConfigStore } from "./config";
 const protectedKeys = new Set([
   "rcon.password",
@@ -76,7 +77,15 @@ export class Properties {
   constructor(readonly store: ConfigStore) {}
   async internal(name: string) {
     const path = join(await this.store.folder(name), "data/server.properties");
-    return { path, values: parseProperties(await readFile(path, "utf8")) };
+    const root = join(await this.store.folder(name), "data");
+    const handle = await secureOpen(root, path);
+    try {
+      if ((await handle.stat()).size > 128 * 1024)
+        throw Error("Properties file too large");
+      return { path, values: parseProperties(await handle.readFile("utf8")) };
+    } finally {
+      await handle.close();
+    }
   }
   async get(name: string) {
     const { values } = await this.internal(name);
@@ -130,7 +139,7 @@ export class Properties {
       "enable-query": "false",
       "management-server-enabled": "false",
     });
-    await writeFile(path, serializeProperties(next), { mode: 0o600 });
+    await atomicText(path, serializeProperties(next));
     return this.get(name);
   }
 }

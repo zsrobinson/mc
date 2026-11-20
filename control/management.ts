@@ -1,4 +1,13 @@
-import { readFile, readdir, copyFile } from "node:fs/promises";
+import type { Readable } from "node:stream";
+export type Transfer = {
+  file?: string;
+  stream?: Readable;
+  text?: string;
+  filename: string;
+  type: string;
+  temporary?: boolean;
+};
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { Docker } from "./docker";
@@ -9,6 +18,7 @@ import { Players } from "./players";
 import { Worlds } from "./worlds";
 import { atomic, exists } from "./config";
 export const managementVerbs = [
+  "world-info",
   "kill",
   "players",
   "player-action",
@@ -37,7 +47,12 @@ export class Management {
   ) {
     this.properties = new Properties(docker.store);
     this.files = new Files(docker.store, this.properties);
-    this.players = new Players(docker, this.properties, docker.upstream);
+    this.players = new Players(
+      docker,
+      this.properties,
+      docker.upstream,
+      this.files,
+    );
     this.worlds = new Worlds(docker, backups, this.properties);
   }
   async schedule(name: string) {
@@ -48,6 +63,32 @@ export class Management {
           backupAt?: string | null;
         })
       : {};
+  }
+  async effectiveSchedule(name: string) {
+    const schedule = await this.schedule(name);
+    return {
+      backupAt: schedule.backupAt ?? process.env.MC_GLOBAL_BACKUP_TIME ?? null,
+      backupSource: schedule.backupAt
+        ? ("server" as const)
+        : ("global" as const),
+      restartAt: schedule.restartAt ?? null,
+      timezone: "UTC" as const,
+    };
+  }
+  async restoreTestInfo(name: string) {
+    const file = join(
+      await this.docker.store.folder(name),
+      "restore-test.json",
+    );
+    if (!(await exists(file))) return undefined;
+    const data = JSON.parse(await readFile(file, "utf8"));
+    return {
+      at: data.at,
+      ok: data.ok === true,
+      snapshot: data.snapshot,
+      regionFiles: data.regionFiles,
+      version: data.version,
+    };
   }
   async loader(name: string) {
     const config = await this.docker.store.read(name);
@@ -62,6 +103,7 @@ export class Management {
         .object({ confirm: z.literal(true) })
         .passthrough()
         .parse(payload);
+    if (verb === "world-info") return this.worlds.info(name);
     if (verb === "kill") {
       confirm();
       await atomic(
@@ -105,6 +147,14 @@ export class Management {
         .strict()
         .parse(payload);
       const c = await this.docker.store.read(name);
+      const current = await this.loader(name);
+      if (current) {
+        const a = p.loader.split(".").map(Number),
+          b = current.split(".").map(Number);
+        let order = 0;
+        for (let i = 0; i < 3 && !order; i++) order = a[i] - b[i];
+        if (order <= 0) throw Error("Choose a newer compatible Fabric loader");
+      }
       const loaders = await this.docker.upstream.json<
         { loader: { version: string } }[]
       >(
@@ -139,6 +189,7 @@ export class Management {
         })
         .strict()
         .parse(payload);
+      await this.files.path(name, p.path, true);
       await this.backups.backup(name, "pre-destructive");
       return this.files.write(name, p.path, p.text);
     }
@@ -147,6 +198,7 @@ export class Management {
         .object({ path: pathSchema, confirm: z.literal(true) })
         .strict()
         .parse(payload);
+      await this.files.path(name, p.path);
       await this.backups.backup(name, "pre-destructive");
       return this.files.remove(name, p.path);
     }
@@ -216,10 +268,7 @@ export class Management {
       )
         throw Error("Server icon must be a 64 × 64 PNG");
       await this.backups.backup(name, "pre-destructive");
-      await copyFile(
-        temp,
-        join(await this.docker.store.folder(name), "data/server-icon.png"),
-      );
+      await this.files.setBinary(name, "server-icon.png", temp);
       return { uploaded: "server-icon.png", restartRequired: true };
     }
     if (verb === "upload-file") {
@@ -229,7 +278,11 @@ export class Management {
     }
     throw Error("Unknown upload verb");
   }
-  async download(verb: string, name: string, query: Record<string, string>) {
+  async download(
+    verb: string,
+    name: string,
+    query: Record<string, string>,
+  ): Promise<Transfer> {
     await this.docker.store.read(name);
     if (verb === "download-world") return this.worlds.zip(name);
     if (verb === "download-file")
@@ -242,14 +295,22 @@ export class Management {
     }
     if (verb === "download-backup") {
       const snapshot = query.snapshot;
-      if (!(await this.backups.list(name)).some((s) => s.id === snapshot))
-        throw Error("Snapshot not found");
+      const selected = (await this.backups.list(name)).find(
+        (s) => s.id === snapshot,
+      );
+      if (!selected) throw Error("Snapshot not found");
       return {
-        file: join(this.backups.root, name, snapshot, "world.tar.gz"),
+        file: join(
+          this.backups.root,
+          selected.sourceName ?? name,
+          snapshot,
+          "world.tar.gz",
+        ),
         filename: name + "-" + snapshot + ".tar.gz",
         type: "application/gzip",
       };
     }
+
     throw Error("Unknown download verb");
   }
 }

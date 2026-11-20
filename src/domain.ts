@@ -14,6 +14,11 @@ export type ServerStatus = ServerConfig & {
   backup?: { at: string; targets: number };
   joinAddress?: string;
   directAddress?: string;
+  dns?: {
+    status: "ok" | "missing" | "drifted" | "unconfigured";
+    recordName: string;
+    managed?: boolean;
+  };
   metrics?: {
     uptimeSeconds: number | null;
     cpuPercent: number | null;
@@ -22,6 +27,19 @@ export type ServerStatus = ServerConfig & {
     tps: number | null;
     mspt: number | null;
     cpuLimit?: number;
+  };
+  effectiveSchedule?: {
+    backupAt: string | null;
+    backupSource: "global" | "server";
+    restartAt: string | null;
+    timezone: "UTC";
+  };
+  restoreTest?: {
+    at: number;
+    ok: boolean;
+    snapshot: string;
+    regionFiles?: number;
+    version?: string;
   };
   schedule?: { restartAt?: string | null; backupAt?: string | null };
 };
@@ -58,4 +76,5 @@ export type BackupSnapshot = {
   locations?: string[];
   reason?: string;
   pinned?: boolean;
+  sourceName?: string;
 };

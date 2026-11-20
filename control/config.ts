@@ -13,7 +13,13 @@ import { z } from "zod";
 import type { ServerConfig, Limits } from "../src/domain";
 export const nameSchema = z
   .string()
-  .regex(/^[a-z][a-z0-9]{0,23}$/, "Use lowercase letters and numbers");
+  .min(1)
+  .max(24)
+  .regex(
+    /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/,
+    "Use lowercase letters and numbers; hyphens only between words",
+  )
+  .refine((name) => name !== "home", "The name home is reserved");
 export const projectSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/);
 export const configSchema = z
   .object({
@@ -38,6 +44,12 @@ export function required(key: string) {
   const value = process.env[key];
   if (!value) throw Error(`Missing ${key}`);
   return value;
+}
+export async function atomicText(path: string, content: string) {
+  await mkdir(dirname(path), { recursive: true, mode: 0o700 });
+  const temp = path + "." + randomUUID() + ".tmp";
+  await writeFile(temp, content, { mode: 0o600 });
+  await rename(temp, path);
 }
 export async function atomic(path: string, value: unknown) {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
@@ -91,9 +103,16 @@ export class ConfigStore {
     }
     return configs;
   }
-  async validate(input: unknown, creating = false) {
+  async validate(
+    input: unknown,
+    creating = false,
+    replacing?: string,
+    active?: Set<string>,
+  ) {
     const c = configSchema.parse(input);
-    const others = (await this.list()).filter((x) => x.name !== c.name);
+    const others = (await this.list()).filter(
+      (x) => x.name !== c.name && x.name !== replacing,
+    );
     if (c.port < this.limits.portMin || c.port > this.limits.portMax)
       throw Error("Port outside allowed range");
     if (creating && others.length >= this.limits.maxServers)
@@ -109,7 +128,11 @@ export class ConfigStore {
     if (others.some((x) => x.port === c.port))
       throw Error("Port already allocated");
     if (
-      others.reduce((sum, x) => sum + x.memory + 512, 0) + c.memory + 512 >
+      others
+        .filter((x) => !active || active.has(x.name))
+        .reduce((sum, x) => sum + x.memory + 512, 0) +
+        c.memory +
+        512 >
       this.limits.memoryBudget
     )
       throw Error("Total container memory budget exceeded");

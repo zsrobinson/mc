@@ -33,7 +33,7 @@ export async function metadata(
   };
   if (
     typeof values.server === "string" &&
-    /^[a-z][a-z0-9]{0,23}$/.test(values.server)
+    /^[a-z][a-z0-9-]{0,23}$/.test(values.server)
   )
     labels.server = values.server;
   try {
@@ -68,12 +68,12 @@ export function startTelemetry(control: Control) {
     if (busy) return;
     busy = true;
     try {
-      const servers = await control.exclusive(async () => {
+      const servers = await (async () => {
         const result = [];
         for (const config of await control.store.list())
           result.push(await control.status(config));
         return result;
-      });
+      })();
       const metrics = new Map<string, Point[]>();
       const nano = String(BigInt(Date.now()) * 1_000_000n);
       const point = (
@@ -148,19 +148,19 @@ export function startTelemetry(control: Control) {
             "minecraft_backup_last_success_unixtime",
             state?.lastSuccess ?? 0,
             server.name,
-            target.host,
+            target.label ?? target.host,
           );
           point(
             "minecraft_backup_last_attempt_success",
             state ? Number(state.success) : 0,
             server.name,
-            target.host,
+            target.label ?? target.host,
           );
           point(
             "minecraft_backup_last_attempt_unixtime",
             state?.lastAttempt ?? 0,
             server.name,
-            target.host,
+            target.label ?? target.host,
           );
           if (
             !state ||
