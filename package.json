@@ -18,7 +18,7 @@
     "@tanstack/react-router": "^1.170.46",
     "@tanstack/router-plugin": "^1.169.0",
     "@zip.js/zip.js": "^2.25.0",
-    "@zsrobinson/shell": "git+https://github.com/zsrobinson/shell.git#1395f5ec1d535054f5ed40b105452faf09fe91f4",
+    "@zsrobinson/shell": "git+https://github.com/zsrobinson/shell.git#43fb4c42fa90922a4f67c242366926785b452578",
     "cn": "^0.5.2",
     "hono": "^4.10.0",
     "jose": "^6.1.0",

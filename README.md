@@ -59,6 +59,35 @@ new private staging directory, then restore its data/config/secret together.
 Never extract untrusted archives over a live world. Keep the replaced data until
 its deletion is explicitly approved.
 
+## Panel
+
+The panel is a Vite app in `panel/` built on the shared shell, with TanStack
+Router file routes and TanStack Query for every request.
+
+| Route                        | Page                                                    |
+| ---------------------------- | ------------------------------------------------------- |
+| `/`                          | Servers with join addresses, players and status         |
+| `/new`                       | Create a server from a name; advanced options are optional |
+| `/servers/$name`             | Overview: status, performance, players, connection      |
+| `/servers/$name/console`     | Live log with reconnect, RCON commands with history, log files |
+| `/servers/$name/players`     | Online players, whitelist, operators and bans           |
+| `/servers/$name/mods`        | Installed mods and datapacks, updates, Modrinth search  |
+| `/servers/$name/files`       | Data directory browser, text editor, upload, download   |
+| `/servers/$name/world`       | Download, replace or reset the world                    |
+| `/servers/$name/backups`     | Snapshots, back up now, restore test, restore, download |
+| `/servers/$name/software`    | Minecraft upgrade with compatibility check, Fabric loader |
+| `/servers/$name/settings`    | Game settings, server.properties, resources, schedule, DNS, icon, rename, delete |
+
+Dialogs only confirm short actions. Restoring, replacing or resetting a world,
+renaming and deleting a server require typing the server's name. The console
+follows `/api/console` server-sent events and falls back to polling `logs`.
+
+`panel/src/lib` holds the API client (`api.ts`), query and mutation hooks
+(`queries.ts`, `mutations.ts`) and formatting; `panel/src/components` holds page
+sections grouped by area. Scripts: `npm run dev` (with `API_PORT` pointing at
+a local API), `npm run typecheck`, `npm run lint`, `npm run format:check`,
+`npm run build`.
+
 ## Development
 
 Node 24, Python 3.11+. `npm ci && npm run build`, then
