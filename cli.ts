@@ -13,11 +13,14 @@ Usage:
   mcctl download-world|download-file|download-log|download-backup SERVER --out FILE [--path PATH] [--snapshot ID]
   mcctl upload-world|upload-file|upload-icon SERVER --file FILE [--path PATH] --confirm [--confirm-name SERVER]
 
-Read: status, versions, limits, logs, logs-list, players, properties, files,
-      read-file, backups, restore-test, check-upgrade, check-updates
+Read: status, versions, limits, logs, logs-list, read-log, players, properties,
+      files, read-file, backups, restore-test, check-upgrade, check-updates,
+      tasks, audit
 Control: start, stop, restart, kill, rcon, player-action, apply-config,
-         apply-properties, set-loader, write-file, delete-file, backup-now,
-         restore-backup, reset-world, schedule, create-server, delete-server
+         apply-properties, set-loader, write-file, delete-file, make-directory,
+         rename-file, archive-files, extract-archive, backup-now,
+         restore-backup, reset-world, save-task, delete-task, run-task,
+         schedule, create-server, delete-server
 
 Examples:
   mcctl status sample --json
@@ -26,12 +29,47 @@ Examples:
   mcctl apply-properties sample --data '{"values":{"difficulty":"hard"}}' --confirm
   mcctl reset-world sample --data '{"sameSeed":true}' --confirm --confirm-name sample
   mcctl create-server --data '{"name":"sample","version":"1.21.1","memory":2048}'
+  mcctl save-task sample --data '{"task":{"kind":"restart","time":"05:00","days":[],"enabled":true,"warnMinutes":5}}'
+  mcctl audit --data '{"limit":20}' --json
 
 Memory is MiB. A port is picked automatically when omitted. Schedule times use
-UTC HH:MM. Destructive actions require --confirm; world/reset/restore/delete
-also require --confirm-name. Server data paths are relative to its data folder.
+UTC HH:MM. Destructive actions require --confirm; kill, world replace/reset,
+restore and delete also require --confirm-name, and mcctl requests their
+single-use confirmation token for you. Server data paths are relative to its data folder.
 Secret credentials and deployment addresses are read from the private environment.
 `;
+let socketPathForCall = "";
+let secretForCall = "";
+/** One JSON request to the helper; used for the confirmation token. */
+function call(body: string) {
+  return new Promise<unknown>((resolve, reject) => {
+    const req = request(
+      {
+        socketPath: socketPathForCall,
+        path: "/",
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + secretForCall,
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body),
+        },
+      },
+      async (res) => {
+        let text = "";
+        for await (const chunk of res) text += chunk;
+        try {
+          const value = JSON.parse(text);
+          if ((res.statusCode ?? 500) >= 400) reject(Error(value.error || "Request failed"));
+          else resolve(value);
+        } catch {
+          reject(Error("Request failed (" + res.statusCode + ")"));
+        }
+      },
+    );
+    req.on("error", reject);
+    req.end(body);
+  });
+}
 const argv = process.argv.slice(2);
 if (!argv.length || ["help", "--help", "-h"].includes(argv[0])) {
   console.log(help);
@@ -75,6 +113,8 @@ try {
       "Set MC_HELPER_SOCKET and MC_HELPER_SECRET_FILE (fleet mcctl wrapper does this)",
     );
   const secret = (await readFile(secretFile, "utf8")).trim();
+  socketPathForCall = socketPath;
+  secretForCall = secret;
   const payload: Record<string, unknown> = flags["--data-file"]
     ? JSON.parse(await readFile(String(flags["--data-file"]), "utf8"))
     : flags["--data"]
@@ -102,12 +142,21 @@ try {
   if (destructive.has(verb) && !flags["--confirm"])
     throw Error("This action requires --confirm");
   if (
-    ["reset-world", "restore-backup", "delete-server", "upload-world"].includes(
+    ["kill", "reset-world", "restore-backup", "delete-server", "upload-world"].includes(
       verb,
     ) &&
     flags["--confirm-name"] !== name
   )
     throw Error("This action requires --confirm-name " + name);
+  let intent: string | undefined;
+  const intentAction = verb === "upload-world" ? "replace-world" : verb;
+  if (["kill", "reset-world", "restore-backup", "delete-server", "replace-world"].includes(intentAction))
+    intent = (
+      (await call(
+        JSON.stringify({ verb: "confirm-intent", name, payload: { action: intentAction }, actor: "cli" }),
+      )) as { token: string }
+    ).token;
+  if (intent && !verb.startsWith("upload-")) payload.intent = intent;
   const binary = verb.startsWith("download-") || verb.startsWith("upload-");
   let path = "/",
     method = "POST";
@@ -119,7 +168,8 @@ try {
     path = "/console?" + new URLSearchParams({ name });
     method = "GET";
   } else if (binary) {
-    const query = new URLSearchParams({ verb, name: name || "" });
+    const query = new URLSearchParams({ verb, name: name || "", actor: "cli" });
+    if (intent) query.set("intent", intent);
     for (const flag of ["--path", "--snapshot", "--confirm", "--confirm-name"])
       if (flags[flag])
         query.set(
@@ -132,7 +182,7 @@ try {
     if (method === "GET" && !flags["--out"]) throw Error("Choose --out FILE");
     if (method === "POST" && !flags["--file"])
       throw Error("Choose --file FILE");
-  } else body = JSON.stringify({ verb, name, payload });
+  } else body = JSON.stringify({ verb, name, payload, actor: "cli" });
   await new Promise<void>((resolve, reject) => {
     const req = request(
       {

@@ -11,6 +11,19 @@ import type { ServerConfig, ServerStatus } from "../src/domain";
 // zip.js reads metadata without extracting paths or executing archive content.
 import { Management, managementVerbs } from "./management";
 import { Dns } from "./dns";
+import {
+  Audit,
+  Intents,
+  actorSchema,
+  auditDetail,
+  auditFile,
+  destructiveActions,
+  readVerbs,
+  type DestructiveAction,
+} from "./audit";
+import { Tasks } from "./tasks";
+import { runTask } from "./scheduler";
+import { pathSchema } from "./files";
 import { BlobReader, ZipReader } from "@zip.js/zip.js";
 export const requestSchema = z
   .object({
@@ -39,14 +52,29 @@ export const requestSchema = z
       "check-upgrade",
       "check-updates",
       "upload-datapack",
+      "confirm-intent",
+      "make-directory",
+      "rename-file",
+      "archive-files",
+      "extract-archive",
+      "read-log",
+      "tasks",
+      "save-task",
+      "delete-task",
+      "run-task",
+      "audit",
     ]),
     name: nameSchema.optional(),
     payload: z.unknown().optional(),
+    actor: actorSchema.optional(),
   })
   .strict();
 export type ControlRequest = z.infer<typeof requestSchema>;
 export class Control {
   readonly management: Management;
+  readonly tasks: Tasks;
+  readonly audit: Audit;
+  readonly intents = new Intents();
   readonly creation = new Map<string, { phase: string; error?: string }>();
   progress(name: string) {
     return this.creation.get(name) ?? { phase: "unknown" };
@@ -68,6 +96,39 @@ export class Control {
     readonly dns = new Dns(),
   ) {
     this.management = new Management(docker, backups);
+    this.tasks = new Tasks(store);
+    this.audit = new Audit(auditFile(store.root));
+  }
+  /** Dispatches a request and records mutations in the activity log. */
+  async run(input: unknown, actor = "system") {
+    const request = requestSchema.parse(input);
+    const who = request.actor ?? actor;
+    if (readVerbs.has(request.verb)) return this.dispatch(request);
+    const started = Date.now();
+    const entry = {
+      actor: who,
+      verb: request.verb,
+      server:
+        request.name ??
+        (request.verb === "create-server" &&
+        typeof (request.payload as { name?: unknown })?.name === "string"
+          ? String((request.payload as { name: string }).name).slice(0, 24)
+          : undefined),
+      detail: auditDetail(request.verb, request.payload),
+    };
+    try {
+      const result = await this.dispatch(request);
+      await this.audit.record({ ...entry, outcome: "ok", durationMs: Date.now() - started });
+      return result;
+    } catch (e) {
+      await this.audit.record({
+        ...entry,
+        outcome: "error",
+        durationMs: Date.now() - started,
+        error: e instanceof Error ? e.message : "Operation failed",
+      });
+      throw e;
+    }
   }
   exclusive<T>(work: () => Promise<T>): Promise<T> {
     const result = this.tail.then(work);
@@ -76,28 +137,7 @@ export class Control {
   }
   dispatch(input: unknown) {
     const request = requestSchema.parse(input);
-    if (
-      [
-        "list",
-        "status",
-        "versions",
-        "limits",
-        "logs",
-        "backups",
-        "players",
-        "properties",
-        "files",
-        "read-file",
-        "logs-list",
-        "dns-status",
-        "check-upgrade",
-        "check-updates",
-        "create-progress",
-        "mods-details",
-        "loader-versions",
-        "world-info",
-      ].includes(request.verb)
-    )
+    if (readVerbs.has(request.verb) || request.verb === "run-task")
       return this.action(request);
     const next = this.tail.then(() => this.action(request));
     this.tail = next.catch(() => undefined);
@@ -132,8 +172,16 @@ export class Control {
         .metrics(c.name, c.memory + 512)
         .catch(() => undefined),
       fabricLoader: await this.management.loader(c.name),
-      schedule: await this.management.schedule(c.name),
-      effectiveSchedule: await this.management.effectiveSchedule(c.name),
+      schedule: await this.tasks.legacyView(c.name),
+      effectiveSchedule: await this.effectiveSchedule(c.name),
+      lastExit:
+        info && !info.State.Running && info.State.FinishedAt && !info.State.FinishedAt.startsWith("0001-")
+          ? {
+              exitCode: info.State.ExitCode ?? 0,
+              finishedAt: info.State.FinishedAt,
+              oomKilled: info.State.OOMKilled === true,
+            }
+          : undefined,
       restoreTest: await this.management.restoreTestInfo(c.name),
       backup: await this.backups.latest(c.name),
       joinAddress: this.addresses.joinDomain
@@ -147,6 +195,26 @@ export class Control {
         ? this.addresses.directHost + ":" + c.port
         : undefined,
     };
+  }
+  async effectiveSchedule(name: string) {
+    const own = await this.tasks.legacyView(name);
+    return {
+      backupAt: own.backupAt ?? process.env.MC_GLOBAL_BACKUP_TIME ?? null,
+      backupSource: own.backupAt ? ("server" as const) : ("global" as const),
+      restartAt: own.restartAt,
+      timezone: "UTC" as const,
+    };
+  }
+  /** Checks typed name and a single-use intent, returning the payload without the token. */
+  private authorize(action: DestructiveAction, name: string, payload: unknown) {
+    const p = z
+      .object({ confirm: z.literal(true), confirmName: z.string(), intent: z.string().optional() })
+      .passthrough()
+      .parse(payload);
+    if (p.confirmName !== name) throw Error("Type the exact server name to confirm");
+    this.intents.consume(action, name, p.intent);
+    const { intent: _intent, ...rest } = p;
+    return rest;
   }
   async renameServer(name: string, payload: unknown) {
     const p = z
@@ -227,6 +295,8 @@ export class Control {
             .enum(["survival", "creative", "adventure", "spectator"])
             .optional(),
           difficulty: z.enum(["peaceful", "easy", "normal", "hard"]).optional(),
+          hardcore: z.boolean().optional(),
+          levelType: z.enum(["normal", "flat", "large_biomes", "amplified"]).optional(),
         })
         .strict()
         .parse(payload);
@@ -311,7 +381,13 @@ export class Control {
           backupAt: null,
         });
         this.creation.set(name, { phase: "container" });
-        if (input.seed !== undefined || input.gamemode || input.difficulty) {
+        if (
+          input.seed !== undefined ||
+          input.gamemode ||
+          input.difficulty ||
+          input.hardcore !== undefined ||
+          input.levelType
+        ) {
           await this.docker.compose(c);
           const secret = (
             await readFile(join(dir, "rcon.secret"), "utf8")
@@ -330,7 +406,9 @@ export class Control {
               "view-distance": "10",
               "simulation-distance": "10",
               gamemode: input.gamemode ?? "survival",
-              difficulty: input.difficulty ?? "normal",
+              difficulty: input.hardcore ? "hard" : (input.difficulty ?? "normal"),
+              hardcore: input.hardcore ? "true" : "false",
+              "level-type": "minecraft:" + (input.levelType ?? "normal"),
               ...(input.seed !== undefined ? { "level-seed": input.seed } : {}),
             }),
             { mode: 0o600 },
@@ -351,8 +429,111 @@ export class Control {
         throw e;
       }
     }
+    if (verb === "audit") {
+      const p = z
+        .object({
+          limit: z.number().int().min(1).max(500).optional(),
+          before: z.string().datetime().optional(),
+        })
+        .strict()
+        .parse(payload);
+      if (name) await this.store.read(name).catch(() => undefined);
+      return this.audit.list({ server: name, ...p });
+    }
     if (!name) throw Error("Server name required");
     const c = await this.store.read(name);
+    if (verb === "confirm-intent") {
+      const p = z.object({ action: z.enum(destructiveActions) }).strict().parse(payload);
+      return this.intents.issue(p.action, name);
+    }
+    if (verb === "kill") {
+      this.authorize("kill", name, payload);
+      return this.management.handle("kill", name, { confirm: true });
+    }
+    if (verb === "reset-world" || verb === "restore-backup")
+      return this.management.handle(verb, name, this.authorize(verb, name, payload));
+    if (verb === "delete-server")
+      return this.management.worlds.removeServer(
+        name,
+        this.authorize("delete-server", name, payload),
+        () => this.dns.remove(name),
+      );
+    const files = this.management.files;
+    if (verb === "make-directory") {
+      const p = z.object({ path: pathSchema }).strict().parse(payload);
+      return files.makeDirectory(name, p.path);
+    }
+    if (verb === "rename-file") {
+      const p = z.object({ from: pathSchema, to: pathSchema }).strict().parse(payload);
+      return files.renamePath(name, p.from, p.to);
+    }
+    if (verb === "archive-files") {
+      const p = z
+        .object({ paths: z.array(pathSchema).min(1).max(200), destination: pathSchema })
+        .strict()
+        .parse(payload);
+      return files.archive(name, p.paths, p.destination);
+    }
+    if (verb === "extract-archive") {
+      const p = z.object({ path: pathSchema, destination: pathSchema }).strict().parse(payload);
+      return files.extract(name, p.path, p.destination);
+    }
+    if (verb === "read-log") {
+      const p = z.object({ file: z.string().max(128) }).strict().parse(payload);
+      return files.readLog(name, p.file);
+    }
+    if (verb === "tasks")
+      return {
+        tasks: (await this.tasks.list(name)).map((t) => this.tasks.view(t)),
+        timezone: "UTC" as const,
+        globalBackupAt: process.env.MC_GLOBAL_BACKUP_TIME ?? null,
+      };
+    if (verb === "save-task") {
+      const p = z.object({ task: z.unknown() }).strict().parse(payload);
+      return this.tasks.save(name, p.task);
+    }
+    if (verb === "delete-task") {
+      const p = z.object({ id: z.string(), confirm: z.literal(true) }).strict().parse(payload);
+      return this.tasks.remove(name, p.id);
+    }
+    if (verb === "run-task") {
+      const p = z.object({ id: z.string() }).strict().parse(payload);
+      const task = await this.tasks.get(name, p.id);
+      void runTask(this, name, task)
+        .then(() => this.tasks.update(name, task.id, { lastRun: { at: new Date().toISOString(), ok: true } }))
+        .catch((e) =>
+          this.tasks.update(name, task.id, {
+            lastRun: {
+              at: new Date().toISOString(),
+              ok: false,
+              error: e instanceof Error ? e.message.slice(0, 200) : "Task failed",
+            },
+          }),
+        );
+      return { ok: true, started: true };
+    }
+    if (verb === "schedule") {
+      // Legacy verb: maps HH:MM settings onto the first daily restart/backup task.
+      const time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/).nullable().optional();
+      const p = z.object({ restartAt: time, backupAt: time }).strict().parse(payload);
+      const tasks = await this.tasks.list(name);
+      for (const [key, kind] of [["restartAt", "restart"], ["backupAt", "backup"]] as const) {
+        if (p[key] === undefined) continue;
+        const existing = tasks.find((t) => t.kind === kind && !t.days.length);
+        if (p[key] === null) {
+          if (existing) await this.tasks.remove(name, existing.id);
+        } else
+          await this.tasks.save(name, {
+            ...(existing ? { id: existing.id } : {}),
+            kind,
+            time: p[key],
+            days: [],
+            enabled: true,
+            ...(kind === "restart" ? { warnMinutes: existing?.warnMinutes ?? 0 } : {}),
+          });
+      }
+      return this.tasks.legacyView(name);
+    }
     if (verb === "loader-versions") {
       const installed = await this.management.loader(name);
       const versions = await this.upstream.json<
@@ -385,10 +566,6 @@ export class Control {
         .parse(payload);
       return this.dns.ensure(name, c.port);
     }
-    if (verb === "delete-server")
-      return this.management.worlds.removeServer(name, payload, () =>
-        this.dns.remove(name),
-      );
     if (verb === "rename-server") return this.renameServer(name, payload);
     if (managementVerbs.includes(verb as (typeof managementVerbs)[number]))
       return this.management.handle(verb, name, payload);
