@@ -70,7 +70,13 @@ export type SearchHit = ModrinthHit & {
   compatible?: boolean;
 };
 
-export type WorldInfo = { bytes: number; modifiedAt: string; version?: string };
+export type WorldInfo = {
+  bytes: number;
+  modifiedAt: string;
+  version?: string;
+  /** 64-bit seed as a decimal string; absent on some newer world layouts. */
+  seed?: string;
+};
 
 export type Session = { email: string; services: Service[] };
 

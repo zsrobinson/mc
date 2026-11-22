@@ -987,6 +987,7 @@ async function run(
         bytes: 15_734_000 + s.backups.length,
         modifiedAt: iso(now - 3 * MINUTE),
         version: s.version,
+        seed: "-4172144997902289642",
       };
     case "dns-status":
       return {

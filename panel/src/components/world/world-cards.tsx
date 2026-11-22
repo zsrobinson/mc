@@ -11,6 +11,7 @@ import {
 } from "@zsrobinson/shell/ui/card";
 import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
 
+import { CopyButton } from "@zsrobinson/shell/blocks/copy-button";
 import { downloadUrl } from "@/lib/api";
 import { formatBytes, formatDateTime, formatRelative } from "@/lib/format";
 import { worldInfoQuery } from "@/lib/queries";
@@ -63,6 +64,14 @@ export function DownloadWorldCard({ name }: { name: string }) {
           {info.data?.version ? (
             <DetailRow label="Saved by">
               Minecraft {info.data.version}
+            </DetailRow>
+          ) : null}
+          {info.data?.seed ? (
+            <DetailRow label="Seed">
+              <span className="inline-flex items-center gap-1 font-mono text-sm">
+                {info.data.seed}
+                <CopyButton value={info.data.seed} label="Copy seed" />
+              </span>
             </DetailRow>
           ) : null}
         </DetailList>
