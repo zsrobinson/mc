@@ -29,6 +29,8 @@ test("Access signatures, audience, expiry, Origin and Unix helper boundary", asy
     let body = "";
     for await (const chunk of req) body += chunk;
     const input = JSON.parse(body);
+    // Panel requests are attributed to the verified Access email.
+    assert.equal(input.actor, "operator@example.test");
     res.end(
       JSON.stringify(
         input.verb === "status"

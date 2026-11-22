@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Page, PageHeader, PageTitle } from "@zsrobinson/shell";
-import { Button } from "@zsrobinson/shell/ui/button";
+import { SectionNav } from "@zsrobinson/shell/blocks/section-nav";
 import { ConsoleCard } from "@/components/console/console-card";
 import { LogFilesCard } from "@/components/console/log-files-card";
 export const Route = createFileRoute("/servers/$name/console")({
-  staticData: { crumb: "Console" },
+  staticData: { crumb: "Console", viewport: true },
   validateSearch: (
     s: Record<string, unknown>,
   ): { view?: "live" | "files" } => ({
@@ -15,22 +15,44 @@ export const Route = createFileRoute("/servers/$name/console")({
 function ConsolePage() {
   const { name } = Route.useParams();
   const { view = "live" } = Route.useSearch();
-  const navigate = Route.useNavigate();
   return (
     <Page viewport>
       <PageHeader className="shrink-0">
         <PageTitle>Console</PageTitle>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            void navigate({
-              search: { view: view === "live" ? "files" : "live" },
-            })
-          }
-        >
-          {view === "live" ? "Log files" : "Live console"}
-        </Button>
+        <SectionNav
+          label="Console views"
+          className="pb-0"
+          items={[
+            {
+              id: "live",
+              label: "Live",
+              active: view === "live",
+              render: (
+                <Link
+                  to="/servers/$name/console"
+                  params={{ name }}
+                  search={{ view: "live" }}
+                  activeOptions={{ exact: true, includeSearch: true }}
+                  replace
+                />
+              ),
+            },
+            {
+              id: "files",
+              label: "Log files",
+              active: view === "files",
+              render: (
+                <Link
+                  to="/servers/$name/console"
+                  params={{ name }}
+                  search={{ view: "files" }}
+                  activeOptions={{ exact: true, includeSearch: true }}
+                  replace
+                />
+              ),
+            },
+          ]}
+        />
       </PageHeader>
       {view === "live" ? (
         <ConsoleCard name={name} />

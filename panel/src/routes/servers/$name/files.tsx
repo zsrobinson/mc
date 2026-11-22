@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PageHeader, PageStack, PageTitle } from "@zsrobinson/shell";
 
 import { FileBrowser } from "@/components/files/file-browser";
 import { FileEditor } from "@/components/files/file-editor";
@@ -20,9 +21,19 @@ export const Route = createFileRoute("/servers/$name/files")({
 function FilesPage() {
   const { name } = Route.useParams();
   const { path, file } = Route.useSearch();
-  return file ? (
-    <FileEditor key={file} name={name} path={file} />
-  ) : (
-    <FileBrowser name={name} path={path} />
+  return (
+    <PageStack>
+      {file ? (
+        <>
+          <PageHeader>
+            <PageTitle>Files</PageTitle>
+          </PageHeader>
+          <FileEditor key={file} name={name} path={file} />
+        </>
+      ) : (
+        // A new folder starts with nothing selected.
+        <FileBrowser key={path} name={name} path={path} />
+      )}
+    </PageStack>
   );
 }

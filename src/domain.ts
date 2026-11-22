@@ -42,6 +42,8 @@ export type ServerStatus = ServerConfig & {
     version?: string;
   };
   schedule?: { restartAt?: string | null; backupAt?: string | null };
+  /** Present while the container is not running: how it last exited. */
+  lastExit?: { exitCode: number; finishedAt: string; oomKilled: boolean };
 };
 export type Compatibility = {
   version: string;

@@ -33,8 +33,21 @@ export function mountHistory<E extends Env>(app: Hono<E>) {
       return c.json({ error: "Invalid history request" }, 400);
     if (name && !/^[a-z0-9][a-z0-9-]{0,31}$/.test(name))
       return c.json({ error: "Invalid server" }, 400);
-    if (!process.env.PROMETHEUS_URL)
-      return c.json({ error: "History is not configured" }, 503);
+    const [seconds, step] = ranges[range as keyof typeof ranges];
+    const end = Math.floor(Date.now() / 1000 / step) * step;
+    // No metrics source is a normal state: answer with empty series so
+    // clients show "No data yet" rather than an error.
+    const unavailable = () =>
+      c.json({
+        range,
+        start: (end - seconds) * 1000,
+        end: end * 1000,
+        step: step * 1000,
+        timeUnit: "milliseconds",
+        series: {},
+        unavailable: true,
+      });
+    if (!process.env.PROMETHEUS_URL) return unavailable();
     try {
       const response = await helperResponse(
         "/",
@@ -49,8 +62,6 @@ export function mountHistory<E extends Env>(app: Hono<E>) {
       const key = range + ":" + (name ?? "");
       const found = cache.get(key);
       if (found && Date.now() - found.at < 15000) return c.json(found.data);
-      const [seconds, step] = ranges[range as keyof typeof ranges];
-      const end = Math.floor(Date.now() / 1000 / step) * step;
       const entries = await Promise.all(
         Object.entries(metrics).map(async ([key, query]) => {
           const url = new URL(
@@ -99,7 +110,7 @@ export function mountHistory<E extends Env>(app: Hono<E>) {
       cache.set(key, { at: Date.now(), data });
       return c.json(data);
     } catch {
-      return c.json({ error: "History could not be loaded" }, 502);
+      return unavailable();
     }
   });
 }

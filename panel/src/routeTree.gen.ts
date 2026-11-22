@@ -10,21 +10,40 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as ServersNameRouteImport } from './routes/servers/$name'
 import { Route as ServersNameIndexRouteImport } from './routes/servers/$name/index'
-import { Route as ServersNameBackupsRouteImport } from './routes/servers/$name/backups'
+import { Route as ServersNameActivityRouteImport } from './routes/servers/$name/activity'
 import { Route as ServersNameConsoleRouteImport } from './routes/servers/$name/console'
+import { Route as ServersNameDeleteRouteImport } from './routes/servers/$name/delete'
 import { Route as ServersNameFilesRouteImport } from './routes/servers/$name/files'
 import { Route as ServersNameModsRouteImport } from './routes/servers/$name/mods'
 import { Route as ServersNamePlayersRouteImport } from './routes/servers/$name/players'
 import { Route as ServersNameSettingsRouteImport } from './routes/servers/$name/settings'
 import { Route as ServersNameSoftwareRouteImport } from './routes/servers/$name/software'
-import { Route as ServersNameWorldRouteImport } from './routes/servers/$name/world'
+import { Route as ServersNameBackupsIndexRouteImport } from './routes/servers/$name/backups/index'
+import { Route as ServersNameLogsFileRouteImport } from './routes/servers/$name/logs.$file'
+import { Route as ServersNameSchedulesIndexRouteImport } from './routes/servers/$name/schedules/index'
+import { Route as ServersNameSchedulesIdRouteImport } from './routes/servers/$name/schedules/$id'
+import { Route as ServersNameSchedulesNewRouteImport } from './routes/servers/$name/schedules/new'
+import { Route as ServersNameSettingsIndexRouteImport } from './routes/servers/$name/settings/index'
+import { Route as ServersNameSettingsIconRouteImport } from './routes/servers/$name/settings/icon'
+import { Route as ServersNameSettingsResourcesRouteImport } from './routes/servers/$name/settings/resources'
+import { Route as ServersNameSettingsServerRouteImport } from './routes/servers/$name/settings/server'
+import { Route as ServersNameWorldIndexRouteImport } from './routes/servers/$name/world/index'
+import { Route as ServersNameWorldReplaceRouteImport } from './routes/servers/$name/world/replace'
+import { Route as ServersNameWorldResetRouteImport } from './routes/servers/$name/world/reset'
+import { Route as ServersNameBackupsSnapshotRestoreRouteImport } from './routes/servers/$name/backups/$snapshot.restore'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewRoute = NewRouteImport.update({
@@ -42,14 +61,19 @@ const ServersNameIndexRoute = ServersNameIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ServersNameRoute,
 } as any)
-const ServersNameBackupsRoute = ServersNameBackupsRouteImport.update({
-  id: '/backups',
-  path: '/backups',
+const ServersNameActivityRoute = ServersNameActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
   getParentRoute: () => ServersNameRoute,
 } as any)
 const ServersNameConsoleRoute = ServersNameConsoleRouteImport.update({
   id: '/console',
   path: '/console',
+  getParentRoute: () => ServersNameRoute,
+} as any)
+const ServersNameDeleteRoute = ServersNameDeleteRouteImport.update({
+  id: '/delete',
+  path: '/delete',
   getParentRoute: () => ServersNameRoute,
 } as any)
 const ServersNameFilesRoute = ServersNameFilesRouteImport.update({
@@ -77,100 +101,248 @@ const ServersNameSoftwareRoute = ServersNameSoftwareRouteImport.update({
   path: '/software',
   getParentRoute: () => ServersNameRoute,
 } as any)
-const ServersNameWorldRoute = ServersNameWorldRouteImport.update({
-  id: '/world',
-  path: '/world',
+const ServersNameBackupsIndexRoute = ServersNameBackupsIndexRouteImport.update({
+  id: '/backups/',
+  path: '/backups/',
   getParentRoute: () => ServersNameRoute,
 } as any)
+const ServersNameLogsFileRoute = ServersNameLogsFileRouteImport.update({
+  id: '/logs/$file',
+  path: '/logs/$file',
+  getParentRoute: () => ServersNameRoute,
+} as any)
+const ServersNameSchedulesIndexRoute =
+  ServersNameSchedulesIndexRouteImport.update({
+    id: '/schedules/',
+    path: '/schedules/',
+    getParentRoute: () => ServersNameRoute,
+  } as any)
+const ServersNameSchedulesIdRoute = ServersNameSchedulesIdRouteImport.update({
+  id: '/schedules/$id',
+  path: '/schedules/$id',
+  getParentRoute: () => ServersNameRoute,
+} as any)
+const ServersNameSchedulesNewRoute = ServersNameSchedulesNewRouteImport.update({
+  id: '/schedules/new',
+  path: '/schedules/new',
+  getParentRoute: () => ServersNameRoute,
+} as any)
+const ServersNameSettingsIndexRoute =
+  ServersNameSettingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => ServersNameSettingsRoute,
+  } as any)
+const ServersNameSettingsIconRoute = ServersNameSettingsIconRouteImport.update({
+  id: '/icon',
+  path: '/icon',
+  getParentRoute: () => ServersNameSettingsRoute,
+} as any)
+const ServersNameSettingsResourcesRoute =
+  ServersNameSettingsResourcesRouteImport.update({
+    id: '/resources',
+    path: '/resources',
+    getParentRoute: () => ServersNameSettingsRoute,
+  } as any)
+const ServersNameSettingsServerRoute =
+  ServersNameSettingsServerRouteImport.update({
+    id: '/server',
+    path: '/server',
+    getParentRoute: () => ServersNameSettingsRoute,
+  } as any)
+const ServersNameWorldIndexRoute = ServersNameWorldIndexRouteImport.update({
+  id: '/world/',
+  path: '/world/',
+  getParentRoute: () => ServersNameRoute,
+} as any)
+const ServersNameWorldReplaceRoute = ServersNameWorldReplaceRouteImport.update({
+  id: '/world/replace',
+  path: '/world/replace',
+  getParentRoute: () => ServersNameRoute,
+} as any)
+const ServersNameWorldResetRoute = ServersNameWorldResetRouteImport.update({
+  id: '/world/reset',
+  path: '/world/reset',
+  getParentRoute: () => ServersNameRoute,
+} as any)
+const ServersNameBackupsSnapshotRestoreRoute =
+  ServersNameBackupsSnapshotRestoreRouteImport.update({
+    id: '/backups/$snapshot/restore',
+    path: '/backups/$snapshot/restore',
+    getParentRoute: () => ServersNameRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
   '/new': typeof NewRoute
   '/servers/$name': typeof ServersNameRouteWithChildren
-  '/servers/$name/backups': typeof ServersNameBackupsRoute
+  '/servers/$name/activity': typeof ServersNameActivityRoute
   '/servers/$name/console': typeof ServersNameConsoleRoute
+  '/servers/$name/delete': typeof ServersNameDeleteRoute
   '/servers/$name/files': typeof ServersNameFilesRoute
   '/servers/$name/mods': typeof ServersNameModsRoute
   '/servers/$name/players': typeof ServersNamePlayersRoute
-  '/servers/$name/settings': typeof ServersNameSettingsRoute
+  '/servers/$name/settings': typeof ServersNameSettingsRouteWithChildren
   '/servers/$name/software': typeof ServersNameSoftwareRoute
-  '/servers/$name/world': typeof ServersNameWorldRoute
   '/servers/$name/': typeof ServersNameIndexRoute
+  '/servers/$name/logs/$file': typeof ServersNameLogsFileRoute
+  '/servers/$name/schedules/$id': typeof ServersNameSchedulesIdRoute
+  '/servers/$name/schedules/new': typeof ServersNameSchedulesNewRoute
+  '/servers/$name/settings/icon': typeof ServersNameSettingsIconRoute
+  '/servers/$name/settings/resources': typeof ServersNameSettingsResourcesRoute
+  '/servers/$name/settings/server': typeof ServersNameSettingsServerRoute
+  '/servers/$name/world/replace': typeof ServersNameWorldReplaceRoute
+  '/servers/$name/world/reset': typeof ServersNameWorldResetRoute
+  '/servers/$name/backups/': typeof ServersNameBackupsIndexRoute
+  '/servers/$name/schedules/': typeof ServersNameSchedulesIndexRoute
+  '/servers/$name/settings/': typeof ServersNameSettingsIndexRoute
+  '/servers/$name/world/': typeof ServersNameWorldIndexRoute
+  '/servers/$name/backups/$snapshot/restore': typeof ServersNameBackupsSnapshotRestoreRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
   '/new': typeof NewRoute
-  '/servers/$name/backups': typeof ServersNameBackupsRoute
+  '/servers/$name/activity': typeof ServersNameActivityRoute
   '/servers/$name/console': typeof ServersNameConsoleRoute
+  '/servers/$name/delete': typeof ServersNameDeleteRoute
   '/servers/$name/files': typeof ServersNameFilesRoute
   '/servers/$name/mods': typeof ServersNameModsRoute
   '/servers/$name/players': typeof ServersNamePlayersRoute
-  '/servers/$name/settings': typeof ServersNameSettingsRoute
   '/servers/$name/software': typeof ServersNameSoftwareRoute
-  '/servers/$name/world': typeof ServersNameWorldRoute
   '/servers/$name': typeof ServersNameIndexRoute
+  '/servers/$name/logs/$file': typeof ServersNameLogsFileRoute
+  '/servers/$name/schedules/$id': typeof ServersNameSchedulesIdRoute
+  '/servers/$name/schedules/new': typeof ServersNameSchedulesNewRoute
+  '/servers/$name/settings/icon': typeof ServersNameSettingsIconRoute
+  '/servers/$name/settings/resources': typeof ServersNameSettingsResourcesRoute
+  '/servers/$name/settings/server': typeof ServersNameSettingsServerRoute
+  '/servers/$name/world/replace': typeof ServersNameWorldReplaceRoute
+  '/servers/$name/world/reset': typeof ServersNameWorldResetRoute
+  '/servers/$name/backups': typeof ServersNameBackupsIndexRoute
+  '/servers/$name/schedules': typeof ServersNameSchedulesIndexRoute
+  '/servers/$name/settings': typeof ServersNameSettingsIndexRoute
+  '/servers/$name/world': typeof ServersNameWorldIndexRoute
+  '/servers/$name/backups/$snapshot/restore': typeof ServersNameBackupsSnapshotRestoreRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
   '/new': typeof NewRoute
   '/servers/$name': typeof ServersNameRouteWithChildren
-  '/servers/$name/backups': typeof ServersNameBackupsRoute
+  '/servers/$name/activity': typeof ServersNameActivityRoute
   '/servers/$name/console': typeof ServersNameConsoleRoute
+  '/servers/$name/delete': typeof ServersNameDeleteRoute
   '/servers/$name/files': typeof ServersNameFilesRoute
   '/servers/$name/mods': typeof ServersNameModsRoute
   '/servers/$name/players': typeof ServersNamePlayersRoute
-  '/servers/$name/settings': typeof ServersNameSettingsRoute
+  '/servers/$name/settings': typeof ServersNameSettingsRouteWithChildren
   '/servers/$name/software': typeof ServersNameSoftwareRoute
-  '/servers/$name/world': typeof ServersNameWorldRoute
   '/servers/$name/': typeof ServersNameIndexRoute
+  '/servers/$name/logs/$file': typeof ServersNameLogsFileRoute
+  '/servers/$name/schedules/$id': typeof ServersNameSchedulesIdRoute
+  '/servers/$name/schedules/new': typeof ServersNameSchedulesNewRoute
+  '/servers/$name/settings/icon': typeof ServersNameSettingsIconRoute
+  '/servers/$name/settings/resources': typeof ServersNameSettingsResourcesRoute
+  '/servers/$name/settings/server': typeof ServersNameSettingsServerRoute
+  '/servers/$name/world/replace': typeof ServersNameWorldReplaceRoute
+  '/servers/$name/world/reset': typeof ServersNameWorldResetRoute
+  '/servers/$name/backups/': typeof ServersNameBackupsIndexRoute
+  '/servers/$name/schedules/': typeof ServersNameSchedulesIndexRoute
+  '/servers/$name/settings/': typeof ServersNameSettingsIndexRoute
+  '/servers/$name/world/': typeof ServersNameWorldIndexRoute
+  '/servers/$name/backups/$snapshot/restore': typeof ServersNameBackupsSnapshotRestoreRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/activity'
     | '/new'
     | '/servers/$name'
-    | '/servers/$name/backups'
+    | '/servers/$name/activity'
     | '/servers/$name/console'
+    | '/servers/$name/delete'
     | '/servers/$name/files'
     | '/servers/$name/mods'
     | '/servers/$name/players'
     | '/servers/$name/settings'
     | '/servers/$name/software'
-    | '/servers/$name/world'
     | '/servers/$name/'
+    | '/servers/$name/logs/$file'
+    | '/servers/$name/schedules/$id'
+    | '/servers/$name/schedules/new'
+    | '/servers/$name/settings/icon'
+    | '/servers/$name/settings/resources'
+    | '/servers/$name/settings/server'
+    | '/servers/$name/world/replace'
+    | '/servers/$name/world/reset'
+    | '/servers/$name/backups/'
+    | '/servers/$name/schedules/'
+    | '/servers/$name/settings/'
+    | '/servers/$name/world/'
+    | '/servers/$name/backups/$snapshot/restore'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/activity'
     | '/new'
-    | '/servers/$name/backups'
+    | '/servers/$name/activity'
     | '/servers/$name/console'
+    | '/servers/$name/delete'
     | '/servers/$name/files'
     | '/servers/$name/mods'
     | '/servers/$name/players'
-    | '/servers/$name/settings'
     | '/servers/$name/software'
-    | '/servers/$name/world'
     | '/servers/$name'
+    | '/servers/$name/logs/$file'
+    | '/servers/$name/schedules/$id'
+    | '/servers/$name/schedules/new'
+    | '/servers/$name/settings/icon'
+    | '/servers/$name/settings/resources'
+    | '/servers/$name/settings/server'
+    | '/servers/$name/world/replace'
+    | '/servers/$name/world/reset'
+    | '/servers/$name/backups'
+    | '/servers/$name/schedules'
+    | '/servers/$name/settings'
+    | '/servers/$name/world'
+    | '/servers/$name/backups/$snapshot/restore'
   id:
     | '__root__'
     | '/'
+    | '/activity'
     | '/new'
     | '/servers/$name'
-    | '/servers/$name/backups'
+    | '/servers/$name/activity'
     | '/servers/$name/console'
+    | '/servers/$name/delete'
     | '/servers/$name/files'
     | '/servers/$name/mods'
     | '/servers/$name/players'
     | '/servers/$name/settings'
     | '/servers/$name/software'
-    | '/servers/$name/world'
     | '/servers/$name/'
+    | '/servers/$name/logs/$file'
+    | '/servers/$name/schedules/$id'
+    | '/servers/$name/schedules/new'
+    | '/servers/$name/settings/icon'
+    | '/servers/$name/settings/resources'
+    | '/servers/$name/settings/server'
+    | '/servers/$name/world/replace'
+    | '/servers/$name/world/reset'
+    | '/servers/$name/backups/'
+    | '/servers/$name/schedules/'
+    | '/servers/$name/settings/'
+    | '/servers/$name/world/'
+    | '/servers/$name/backups/$snapshot/restore'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivityRoute: typeof ActivityRoute
   NewRoute: typeof NewRoute
   ServersNameRoute: typeof ServersNameRouteWithChildren
 }
@@ -182,6 +354,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/new': {
@@ -205,11 +384,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServersNameIndexRouteImport
       parentRoute: typeof ServersNameRoute
     }
-    '/servers/$name/backups': {
-      id: '/servers/$name/backups'
-      path: '/backups'
-      fullPath: '/servers/$name/backups'
-      preLoaderRoute: typeof ServersNameBackupsRouteImport
+    '/servers/$name/activity': {
+      id: '/servers/$name/activity'
+      path: '/activity'
+      fullPath: '/servers/$name/activity'
+      preLoaderRoute: typeof ServersNameActivityRouteImport
       parentRoute: typeof ServersNameRoute
     }
     '/servers/$name/console': {
@@ -217,6 +396,13 @@ declare module '@tanstack/react-router' {
       path: '/console'
       fullPath: '/servers/$name/console'
       preLoaderRoute: typeof ServersNameConsoleRouteImport
+      parentRoute: typeof ServersNameRoute
+    }
+    '/servers/$name/delete': {
+      id: '/servers/$name/delete'
+      path: '/delete'
+      fullPath: '/servers/$name/delete'
+      preLoaderRoute: typeof ServersNameDeleteRouteImport
       parentRoute: typeof ServersNameRoute
     }
     '/servers/$name/files': {
@@ -254,38 +440,158 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServersNameSoftwareRouteImport
       parentRoute: typeof ServersNameRoute
     }
-    '/servers/$name/world': {
-      id: '/servers/$name/world'
+    '/servers/$name/backups/': {
+      id: '/servers/$name/backups/'
+      path: '/backups'
+      fullPath: '/servers/$name/backups/'
+      preLoaderRoute: typeof ServersNameBackupsIndexRouteImport
+      parentRoute: typeof ServersNameRoute
+    }
+    '/servers/$name/logs/$file': {
+      id: '/servers/$name/logs/$file'
+      path: '/logs/$file'
+      fullPath: '/servers/$name/logs/$file'
+      preLoaderRoute: typeof ServersNameLogsFileRouteImport
+      parentRoute: typeof ServersNameRoute
+    }
+    '/servers/$name/schedules/': {
+      id: '/servers/$name/schedules/'
+      path: '/schedules'
+      fullPath: '/servers/$name/schedules/'
+      preLoaderRoute: typeof ServersNameSchedulesIndexRouteImport
+      parentRoute: typeof ServersNameRoute
+    }
+    '/servers/$name/schedules/$id': {
+      id: '/servers/$name/schedules/$id'
+      path: '/schedules/$id'
+      fullPath: '/servers/$name/schedules/$id'
+      preLoaderRoute: typeof ServersNameSchedulesIdRouteImport
+      parentRoute: typeof ServersNameRoute
+    }
+    '/servers/$name/schedules/new': {
+      id: '/servers/$name/schedules/new'
+      path: '/schedules/new'
+      fullPath: '/servers/$name/schedules/new'
+      preLoaderRoute: typeof ServersNameSchedulesNewRouteImport
+      parentRoute: typeof ServersNameRoute
+    }
+    '/servers/$name/settings/': {
+      id: '/servers/$name/settings/'
+      path: '/'
+      fullPath: '/servers/$name/settings/'
+      preLoaderRoute: typeof ServersNameSettingsIndexRouteImport
+      parentRoute: typeof ServersNameSettingsRoute
+    }
+    '/servers/$name/settings/icon': {
+      id: '/servers/$name/settings/icon'
+      path: '/icon'
+      fullPath: '/servers/$name/settings/icon'
+      preLoaderRoute: typeof ServersNameSettingsIconRouteImport
+      parentRoute: typeof ServersNameSettingsRoute
+    }
+    '/servers/$name/settings/resources': {
+      id: '/servers/$name/settings/resources'
+      path: '/resources'
+      fullPath: '/servers/$name/settings/resources'
+      preLoaderRoute: typeof ServersNameSettingsResourcesRouteImport
+      parentRoute: typeof ServersNameSettingsRoute
+    }
+    '/servers/$name/settings/server': {
+      id: '/servers/$name/settings/server'
+      path: '/server'
+      fullPath: '/servers/$name/settings/server'
+      preLoaderRoute: typeof ServersNameSettingsServerRouteImport
+      parentRoute: typeof ServersNameSettingsRoute
+    }
+    '/servers/$name/world/': {
+      id: '/servers/$name/world/'
       path: '/world'
-      fullPath: '/servers/$name/world'
-      preLoaderRoute: typeof ServersNameWorldRouteImport
+      fullPath: '/servers/$name/world/'
+      preLoaderRoute: typeof ServersNameWorldIndexRouteImport
+      parentRoute: typeof ServersNameRoute
+    }
+    '/servers/$name/world/replace': {
+      id: '/servers/$name/world/replace'
+      path: '/world/replace'
+      fullPath: '/servers/$name/world/replace'
+      preLoaderRoute: typeof ServersNameWorldReplaceRouteImport
+      parentRoute: typeof ServersNameRoute
+    }
+    '/servers/$name/world/reset': {
+      id: '/servers/$name/world/reset'
+      path: '/world/reset'
+      fullPath: '/servers/$name/world/reset'
+      preLoaderRoute: typeof ServersNameWorldResetRouteImport
+      parentRoute: typeof ServersNameRoute
+    }
+    '/servers/$name/backups/$snapshot/restore': {
+      id: '/servers/$name/backups/$snapshot/restore'
+      path: '/backups/$snapshot/restore'
+      fullPath: '/servers/$name/backups/$snapshot/restore'
+      preLoaderRoute: typeof ServersNameBackupsSnapshotRestoreRouteImport
       parentRoute: typeof ServersNameRoute
     }
   }
 }
 
+interface ServersNameSettingsRouteChildren {
+  ServersNameSettingsIconRoute: typeof ServersNameSettingsIconRoute
+  ServersNameSettingsResourcesRoute: typeof ServersNameSettingsResourcesRoute
+  ServersNameSettingsServerRoute: typeof ServersNameSettingsServerRoute
+  ServersNameSettingsIndexRoute: typeof ServersNameSettingsIndexRoute
+}
+
+const ServersNameSettingsRouteChildren: ServersNameSettingsRouteChildren = {
+  ServersNameSettingsIconRoute: ServersNameSettingsIconRoute,
+  ServersNameSettingsResourcesRoute: ServersNameSettingsResourcesRoute,
+  ServersNameSettingsServerRoute: ServersNameSettingsServerRoute,
+  ServersNameSettingsIndexRoute: ServersNameSettingsIndexRoute,
+}
+
+const ServersNameSettingsRouteWithChildren =
+  ServersNameSettingsRoute._addFileChildren(ServersNameSettingsRouteChildren)
+
 interface ServersNameRouteChildren {
-  ServersNameBackupsRoute: typeof ServersNameBackupsRoute
+  ServersNameActivityRoute: typeof ServersNameActivityRoute
   ServersNameConsoleRoute: typeof ServersNameConsoleRoute
+  ServersNameDeleteRoute: typeof ServersNameDeleteRoute
   ServersNameFilesRoute: typeof ServersNameFilesRoute
   ServersNameModsRoute: typeof ServersNameModsRoute
   ServersNamePlayersRoute: typeof ServersNamePlayersRoute
-  ServersNameSettingsRoute: typeof ServersNameSettingsRoute
+  ServersNameSettingsRoute: typeof ServersNameSettingsRouteWithChildren
   ServersNameSoftwareRoute: typeof ServersNameSoftwareRoute
-  ServersNameWorldRoute: typeof ServersNameWorldRoute
   ServersNameIndexRoute: typeof ServersNameIndexRoute
+  ServersNameLogsFileRoute: typeof ServersNameLogsFileRoute
+  ServersNameSchedulesIdRoute: typeof ServersNameSchedulesIdRoute
+  ServersNameSchedulesNewRoute: typeof ServersNameSchedulesNewRoute
+  ServersNameWorldReplaceRoute: typeof ServersNameWorldReplaceRoute
+  ServersNameWorldResetRoute: typeof ServersNameWorldResetRoute
+  ServersNameBackupsIndexRoute: typeof ServersNameBackupsIndexRoute
+  ServersNameSchedulesIndexRoute: typeof ServersNameSchedulesIndexRoute
+  ServersNameWorldIndexRoute: typeof ServersNameWorldIndexRoute
+  ServersNameBackupsSnapshotRestoreRoute: typeof ServersNameBackupsSnapshotRestoreRoute
 }
 
 const ServersNameRouteChildren: ServersNameRouteChildren = {
-  ServersNameBackupsRoute: ServersNameBackupsRoute,
+  ServersNameActivityRoute: ServersNameActivityRoute,
   ServersNameConsoleRoute: ServersNameConsoleRoute,
+  ServersNameDeleteRoute: ServersNameDeleteRoute,
   ServersNameFilesRoute: ServersNameFilesRoute,
   ServersNameModsRoute: ServersNameModsRoute,
   ServersNamePlayersRoute: ServersNamePlayersRoute,
-  ServersNameSettingsRoute: ServersNameSettingsRoute,
+  ServersNameSettingsRoute: ServersNameSettingsRouteWithChildren,
   ServersNameSoftwareRoute: ServersNameSoftwareRoute,
-  ServersNameWorldRoute: ServersNameWorldRoute,
   ServersNameIndexRoute: ServersNameIndexRoute,
+  ServersNameLogsFileRoute: ServersNameLogsFileRoute,
+  ServersNameSchedulesIdRoute: ServersNameSchedulesIdRoute,
+  ServersNameSchedulesNewRoute: ServersNameSchedulesNewRoute,
+  ServersNameWorldReplaceRoute: ServersNameWorldReplaceRoute,
+  ServersNameWorldResetRoute: ServersNameWorldResetRoute,
+  ServersNameBackupsIndexRoute: ServersNameBackupsIndexRoute,
+  ServersNameSchedulesIndexRoute: ServersNameSchedulesIndexRoute,
+  ServersNameWorldIndexRoute: ServersNameWorldIndexRoute,
+  ServersNameBackupsSnapshotRestoreRoute:
+    ServersNameBackupsSnapshotRestoreRoute,
 }
 
 const ServersNameRouteWithChildren = ServersNameRoute._addFileChildren(
@@ -294,6 +600,7 @@ const ServersNameRouteWithChildren = ServersNameRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivityRoute: ActivityRoute,
   NewRoute: NewRoute,
   ServersNameRoute: ServersNameRouteWithChildren,
 }

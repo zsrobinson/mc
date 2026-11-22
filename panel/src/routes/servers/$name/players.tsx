@@ -1,6 +1,12 @@
 import { HistoryCharts } from "@/components/history-charts";
-import { PageGrid, SectionGroup } from "@zsrobinson/shell";
-import { useQuery } from "@tanstack/react-query";
+import {
+  PageGrid,
+  PageHeader,
+  PageStack,
+  PageTitle,
+  SectionGroup,
+} from "@zsrobinson/shell";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader } from "@zsrobinson/shell/ui/card";
 import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
@@ -13,6 +19,7 @@ import {
 } from "@/components/players/player-cards";
 import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 import { playersQuery } from "@/lib/queries";
+import type { Players } from "@/lib/types";
 
 export const Route = createFileRoute("/servers/$name/players")({
   staticData: { crumb: "Players" },
@@ -25,7 +32,23 @@ export const Route = createFileRoute("/servers/$name/players")({
 function PlayersPage() {
   const { name } = Route.useParams();
   const players = useQuery(playersQuery(name));
+  return (
+    <PageStack>
+      <PageHeader>
+        <PageTitle>Players</PageTitle>
+      </PageHeader>
+      <PlayersBody name={name} players={players} />
+    </PageStack>
+  );
+}
 
+function PlayersBody({
+  name,
+  players,
+}: {
+  name: string;
+  players: UseQueryResult<Players>;
+}) {
   if (players.isPending)
     return (
       <PageGrid aria-busy="true">

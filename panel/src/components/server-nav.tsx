@@ -8,8 +8,10 @@ import {
 import {
   ArchiveIcon,
   BlocksIcon,
-  FileIcon,
+  CalendarClockIcon,
+  FolderIcon,
   GlobeIcon,
+  HistoryIcon,
   LayoutDashboardIcon,
   ListIcon,
   PlusIcon,
@@ -28,15 +30,27 @@ import type { Server } from "@/lib/types";
 import { stateLabel } from "@/lib/state";
 import { StateDot } from "./state-badge";
 import type { PowerAction } from "@/lib/mutations";
+/**
+ * Day-to-day pages first, then the server's data and history, then
+ * configuration. `also` lists other paths that belong to the page.
+ */
 const PAGES = [
-  ["Overview", "/servers/$name", LayoutDashboardIcon, "activity"],
-  ["Console", "/servers/$name/console", TerminalIcon, "activity"],
-  ["Players", "/servers/$name/players", UsersIcon, "activity"],
-  ["Mods", "/servers/$name/mods", BlocksIcon, "content"],
-  ["World", "/servers/$name/world", GlobeIcon, "content"],
-  ["Backups", "/servers/$name/backups", ArchiveIcon, "manage"],
-  ["Files", "/servers/$name/files", FileIcon, "manage"],
-  ["Settings", "/servers/$name/settings", SettingsIcon, "manage"],
+  ["Overview", "/servers/$name", LayoutDashboardIcon, "run", []],
+  ["Console", "/servers/$name/console", TerminalIcon, "run", ["logs"]],
+  ["Players", "/servers/$name/players", UsersIcon, "run", []],
+  ["Files", "/servers/$name/files", FolderIcon, "data", []],
+  ["Backups", "/servers/$name/backups", ArchiveIcon, "data", []],
+  ["Schedules", "/servers/$name/schedules", CalendarClockIcon, "data", []],
+  ["Activity", "/servers/$name/activity", HistoryIcon, "data", []],
+  ["Mods", "/servers/$name/mods", BlocksIcon, "configure", ["software"]],
+  ["World", "/servers/$name/world", GlobeIcon, "configure", []],
+  [
+    "Settings",
+    "/servers/$name/settings",
+    SettingsIcon,
+    "configure",
+    ["delete"],
+  ],
 ] as const;
 export function serverActions(
   server: Server,
@@ -50,7 +64,7 @@ export function serverActions(
       ? [
           ["restart", "Restart", RotateCwIcon],
           ["stop", "Stop", SquareIcon],
-          ["kill", "Kill process", ZapIcon],
+          ["kill", "Force stop", ZapIcon],
         ]
       : [["start", "Start", PlayIcon]]
   ).map(([id, label, Icon]) => ({
@@ -82,6 +96,14 @@ export function useServerNavigation(
           render: <Link to="/" />,
           onSelect: () => void navigate({ to: "/" }),
           active: pathname === "/",
+        },
+        {
+          id: "activity",
+          label: "Activity",
+          icon: <HistoryIcon />,
+          render: <Link to="/activity" />,
+          onSelect: () => void navigate({ to: "/activity" }),
+          active: pathname === "/activity",
         },
       ],
     },
@@ -126,23 +148,15 @@ export function useServerNavigation(
             ? String(parsePlayers(server.players)?.online)
             : undefined,
         active: server.name === current,
-        render: (
-          <Link
-            to={
-              server.state === "crashed"
-                ? "/servers/$name/console"
-                : "/servers/$name"
-            }
-            params={{ name: server.name }}
-          />
-        ),
+        // A crashed server opens on Overview, where the crash is explained.
+        render: <Link to="/servers/$name" params={{ name: server.name }} />,
         onSelect: () =>
           void navigate({
             to: "/servers/$name",
             params: { name: server.name },
           }),
         actions: serverActions(server, onPower),
-        children: PAGES.map(([label, to, Icon, section]) => ({
+        children: PAGES.map(([label, to, Icon, section, also]) => ({
           id: label,
           label,
           icon: <Icon />,
@@ -153,7 +167,11 @@ export function useServerNavigation(
             to === "/servers/$name"
               ? pathname === `/servers/${server.name}` ||
                 pathname === `/servers/${server.name}/`
-              : pathname.startsWith(to.replace("$name", server.name)),
+              : [to.split("/").at(-1), ...also].some(
+                  (segment) =>
+                    pathname === `/servers/${server.name}/${segment}` ||
+                    pathname.startsWith(`/servers/${server.name}/${segment}/`),
+                ),
         })),
       })),
     },

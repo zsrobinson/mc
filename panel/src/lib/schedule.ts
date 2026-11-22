@@ -1,4 +1,4 @@
-import type { Server } from "./types";
+import type { Task, TaskKind } from "./types";
 
 const TIME = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -31,20 +31,46 @@ export function describeUtcTime(hhmm: string) {
 
 export const isTime = (value: string) => TIME.test(value);
 
-/**
- * What actually runs. A per-server backup time overrides the shared nightly
- * job; a null per-server time inherits it.
- */
-export function effectiveTimes(server: Server) {
-  const effective = server.effectiveSchedule;
-  const own = server.schedule;
-  return {
-    backupAt: effective?.backupAt ?? own?.backupAt ?? null,
-    backupInherited: effective
-      ? effective.backupSource === "global"
-      : !own?.backupAt,
-    restartAt: effective
-      ? (effective.restartAt ?? null)
-      : (own?.restartAt ?? null),
-  };
+export const KIND_LABELS: Record<TaskKind, string> = {
+  restart: "Restart",
+  backup: "Backup",
+  command: "Command",
+  announce: "Announcement",
+};
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const WEEKDAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+export { WEEKDAYS };
+
+/** "Every day", "Weekdays", "Weekends" or "Mon, Wed, Fri" (UTC days). */
+export function describeDays(days: number[]) {
+  const set = [...new Set(days)].sort();
+  if (set.length === 0 || set.length === 7) return "Every day";
+  if (set.join() === "1,2,3,4,5") return "Weekdays";
+  if (set.join() === "0,6") return "Weekends";
+  return set.map((day) => WEEKDAYS[day]).join(", ");
 }
+
+/** What the task does, in a few words. */
+export function describeTask(
+  task: Pick<Task, "kind" | "command" | "message" | "warnMinutes">,
+) {
+  if (task.kind === "restart")
+    return task.warnMinutes
+      ? `Warns players ${task.warnMinutes} min before`
+      : "No warning";
+  if (task.kind === "command") return task.command ?? "";
+  if (task.kind === "announce") return task.message ?? "";
+  return "Snapshot to every destination";
+}
+
+/** True when the viewer's clock is UTC, so a second time adds nothing. */
+export const viewerIsUtc = () => new Date().getTimezoneOffset() === 0;

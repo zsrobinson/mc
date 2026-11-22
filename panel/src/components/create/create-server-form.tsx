@@ -17,6 +17,8 @@ import {
   FieldError,
   FieldGroup,
   FieldLabel,
+  FieldLegend,
+  FieldSet,
 } from "@zsrobinson/shell/ui/field";
 import { Input } from "@zsrobinson/shell/ui/input";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
@@ -35,6 +37,7 @@ import {
   type Advanced,
 } from "./advanced-fields";
 import { BudgetFull } from "./budget-full";
+import { TemplatePicker, TEMPLATES, type TemplateId } from "./templates";
 import { CreateProgress } from "./create-progress";
 
 type Payload = { name: string } & ReturnType<typeof advancedPayload>;
@@ -52,7 +55,11 @@ export function CreateServerForm() {
   const [name, setName] = useState("");
   const [touched, setTouched] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [advanced, setAdvanced] = useState<Advanced>(EMPTY_ADVANCED);
+  const [template, setTemplate] = useState<TemplateId>("survival");
+  const [advanced, setAdvanced] = useState<Advanced>({
+    ...EMPTY_ADVANCED,
+    ...TEMPLATES[0].values,
+  });
 
   const create = useControlMutation<Payload, Server>(
     "create-server",
@@ -154,6 +161,20 @@ export function CreateServerForm() {
                   </NativeSelect>
                 </Field>
               </div>
+              <FieldSet>
+                <FieldLegend variant="label" className="mb-1">
+                  Template
+                </FieldLegend>
+                <TemplatePicker
+                  value={template}
+                  disabled={create.isPending}
+                  onChange={(next) => {
+                    setTemplate(next.id);
+                    setAdvanced((current) => ({ ...current, ...next.values }));
+                    if (next.id === "custom") setShowAdvanced(true);
+                  }}
+                />
+              </FieldSet>
               <div>
                 <Button
                   type="button"
@@ -178,7 +199,16 @@ export function CreateServerForm() {
                 <AdvancedFields
                   id="advanced-options"
                   value={advanced}
-                  onChange={setAdvanced}
+                  onChange={(next) => {
+                    setAdvanced(next);
+                    // Editing a game field by hand makes this a custom server.
+                    const match = TEMPLATES.find((t) =>
+                      (
+                        Object.keys(t.values) as (keyof typeof t.values)[]
+                      ).every((key) => t.values[key] === next[key]),
+                    );
+                    setTemplate(match?.id ?? "custom");
+                  }}
                   errors={extraErrors}
                   limits={limits.data}
                   disabled={create.isPending}

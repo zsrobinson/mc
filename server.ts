@@ -37,14 +37,24 @@ const app = createShellServer({
         `Bearer ${process.env.METRICS_TOKEN}`,
   },
 });
-app.get("/api/player-head/:name", async c => {
-  const name=c.req.param("name");
-  if(!/^[A-Za-z0-9_]{1,16}$/.test(name))return c.body(null,400);
-  try { const response=await fetch(`https://mc-heads.net/avatar/${encodeURIComponent(name)}/32`,{signal:AbortSignal.timeout(5000)});
-    if(!response.ok)return c.body(null,404);
-    const bytes=await response.arrayBuffer();if(bytes.byteLength>1024*1024)return c.body(null,502);
-    return c.body(bytes,200,{"Content-Type":"image/png","Cache-Control":"private, max-age=3600"});
-  }catch{return c.body(null,502)}
+app.get("/api/player-head/:name", async (c) => {
+  const name = c.req.param("name");
+  if (!/^[A-Za-z0-9_]{1,16}$/.test(name)) return c.body(null, 400);
+  try {
+    const response = await fetch(
+      `https://mc-heads.net/avatar/${encodeURIComponent(name)}/32`,
+      { signal: AbortSignal.timeout(5000) },
+    );
+    if (!response.ok) return c.body(null, 404);
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength > 1024 * 1024) return c.body(null, 502);
+    return c.body(bytes, 200, {
+      "Content-Type": "image/png",
+      "Cache-Control": "private, max-age=3600",
+    });
+  } catch {
+    return c.body(null, 502);
+  }
 });
 app.get("/api/modrinth-icon/:project", async (c) => {
   try {
@@ -108,8 +118,11 @@ for (const [route, helperPath, method] of [
 ] as const) {
   app.on(method, route, async (c) => {
     try {
+      const query = new URL(c.req.url).searchParams;
+      // The signed-in email attributes transfers in the activity log.
+      if (route !== "/api/console") query.set("actor", c.get("email"));
       return await helperResponse(
-        helperPath + "?" + new URL(c.req.url).searchParams.toString(),
+        helperPath + "?" + query.toString(),
         method,
         c.req.raw.body,
       );
@@ -122,7 +135,16 @@ app.post("/api/control", async (c) => {
   try {
     if (Number(c.req.header("Content-Length") || 0) > 24 * 1024 * 1024)
       return c.json({ error: "Request too large" }, 413);
-    const body = await c.req.text();
+    let input: unknown;
+    try {
+      input = JSON.parse(await c.req.text());
+    } catch {
+      return c.json({ error: "Invalid request" }, 400);
+    }
+    if (!input || typeof input !== "object" || Array.isArray(input))
+      return c.json({ error: "Invalid request" }, 400);
+    // The signed-in email attributes the action in the helper's activity log.
+    const body = JSON.stringify({ ...input, actor: c.get("email") });
     const result = await new Promise<{ status: number; body: string }>(
       (resolve, reject) => {
         const req = request(
@@ -154,7 +176,10 @@ app.post("/api/control", async (c) => {
         req.end(body);
       },
     );
-    return c.json(normalizeServerRecords(JSON.parse(result.body)), result.status as 200);
+    return c.json(
+      normalizeServerRecords(JSON.parse(result.body)),
+      result.status as 200,
+    );
   } catch {
     return c.json({ error: "Control service unavailable" }, 502);
   }

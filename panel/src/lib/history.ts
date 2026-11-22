@@ -8,6 +8,8 @@ export type History = {
   start?: number;
   end?: number;
   step?: number;
+  /** The panel has no metrics source right now; series is empty. */
+  unavailable?: boolean;
   series: Record<
     string,
     { metric: Record<string, string>; values: [number, string][] }[]

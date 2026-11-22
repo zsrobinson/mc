@@ -22,6 +22,7 @@ import { Docker } from "./control/docker";
 import { Upstream } from "./control/upstream";
 import { Backups, targetsSchema } from "./control/backups";
 import { Control, requestSchema } from "./control/service";
+import { IntentError, actorSchema } from "./control/audit";
 export function helperApp(control: Control, secret: string) {
   const app = new Hono();
   app.use("*", async (c, next) => {
@@ -45,7 +46,7 @@ export function helperApp(control: Control, secret: string) {
         return c.json(control.progress(input.name || ""));
       const started = Date.now();
       try {
-        const result = await control.dispatch(input);
+        const result = await control.run(input, "cli");
         void metadata("helper", "operation", {
           verb: input.verb,
           server: input.name,
@@ -63,6 +64,8 @@ export function helperApp(control: Control, secret: string) {
         throw e;
       }
     } catch (e) {
+      if (e instanceof IntentError)
+        return c.json({ error: e.message, code: e.code }, 409);
       if (e instanceof ZodError)
         return c.json(
           { error: e.issues.map((i) => i.message).join("; ") },
@@ -90,6 +93,14 @@ export function helperApp(control: Control, secret: string) {
       const result = await control.exclusive(() =>
         control.management.download(query.verb, name, query),
       );
+      void control.audit.record({
+        actor: actorSchema.safeParse(query.actor).data ?? "cli",
+        verb: String(query.verb).slice(0, 40),
+        server: name,
+        outcome: "ok",
+        durationMs: 0,
+        detail: result.filename.slice(0, 120),
+      });
       const headers = {
         "Content-Type": result.type,
         "Content-Disposition":
@@ -139,11 +150,36 @@ export function helperApp(control: Control, secret: string) {
         }),
         createWriteStream(file, { mode: 0o600 }),
       );
-      const result = await control.exclusive(() =>
-        control.management.upload(query.verb, name, file, query),
-      );
-      return c.json(result);
+      if (query.verb === "upload-world") {
+        if (query.confirmName !== name)
+          throw Error("Type the exact server name to confirm");
+        control.intents.consume("replace-world", name, query.intent);
+      }
+      const started = Date.now();
+      const entry = {
+        actor: actorSchema.safeParse(query.actor).data ?? "cli",
+        verb: query.verb,
+        server: name,
+        detail: query.path ? "path: " + query.path.slice(0, 120) : undefined,
+      };
+      try {
+        const result = await control.exclusive(() =>
+          control.management.upload(query.verb, name, file, query),
+        );
+        await control.audit.record({ ...entry, outcome: "ok", durationMs: Date.now() - started });
+        return c.json(result);
+      } catch (e) {
+        await control.audit.record({
+          ...entry,
+          outcome: "error",
+          durationMs: Date.now() - started,
+          error: e instanceof Error ? e.message : "Upload failed",
+        });
+        throw e;
+      }
     } catch (e) {
+      if (e instanceof IntentError)
+        return c.json({ error: e.message, code: e.code }, 409);
       return c.json(
         { error: e instanceof Error ? e.message : "Upload failed" },
         400,

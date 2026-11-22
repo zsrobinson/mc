@@ -25,7 +25,15 @@ type Container = {
   Id: string;
   Config: { Labels: Record<string, string> };
   Mounts: { Destination: string; Source: string }[];
-  State: { Running: boolean; Status: string; StartedAt?: string; ExitCode?: number };
+  State: {
+    Running: boolean;
+    Status: string;
+    StartedAt?: string;
+    FinishedAt?: string;
+    ExitCode?: number;
+    OOMKilled?: boolean;
+  };
+  RestartCount?: number;
 };
 export class Docker {
   constructor(

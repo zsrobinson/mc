@@ -38,8 +38,13 @@ export function StateBadge({ state }: { state: string }) {
       {stateLabel(state)}
     </Badge>
   );
+  // A crash badge leads to Overview, which explains the exit and next steps.
   return state === "crashed" && name ? (
-    <Link to="/servers/$name/console" params={{ name }}>
+    <Link
+      to="/servers/$name"
+      params={{ name }}
+      className="rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+    >
       {badge}
     </Link>
   ) : (

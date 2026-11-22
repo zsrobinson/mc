@@ -1,4 +1,8 @@
-import { keepPreviousData, queryOptions } from "@tanstack/react-query";
+import {
+  infiniteQueryOptions,
+  keepPreviousData,
+  queryOptions,
+} from "@tanstack/react-query";
 
 import { control, getJson } from "./api";
 import type {
@@ -15,7 +19,10 @@ import type {
   Properties,
   Server,
   Session,
+  Tasks,
   TextFile,
+  AuditPage,
+  LogText,
 } from "./types";
 
 /** Every per-server query starts with ["server", name] so one call refreshes all. */
@@ -43,6 +50,14 @@ export const keys = {
   file: (name: string, path: string) => ["server", name, "file", path] as const,
   search: (kind: "mod" | "datapack", q: string, version: string) =>
     ["search", kind, q, version] as const,
+  tasks: (name: string) => ["server", name, "tasks"] as const,
+  logText: (name: string, file: string) =>
+    ["server", name, "log-text", file] as const,
+  /** Server activity lives under ["server", name] so mutations refresh it. */
+  audit: (name: string | undefined) =>
+    name
+      ? (["server", name, "audit"] as const)
+      : (["activity", "all"] as const),
 };
 
 export const sessionQuery = queryOptions({
@@ -211,4 +226,40 @@ export const upgradeCheckQuery = (name: string, version: string) =>
       control<Compatibility>("check-upgrade", name, { version }, signal),
     staleTime: 5 * 60_000,
     retry: false,
+  });
+
+export const tasksQuery = (name: string) =>
+  queryOptions({
+    queryKey: keys.tasks(name),
+    queryFn: ({ signal }) => control<Tasks>("tasks", name, {}, signal),
+  });
+
+export const logTextQuery = (name: string, file: string) =>
+  queryOptions({
+    queryKey: keys.logText(name, file),
+    queryFn: ({ signal }) =>
+      control<LogText>("read-log", name, { file }, signal),
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+
+export const AUDIT_PAGE = 50;
+
+/** Newest first; each further page asks for entries before the oldest shown. */
+export const auditQuery = (name?: string) =>
+  infiniteQueryOptions({
+    queryKey: keys.audit(name),
+    queryFn: ({ signal, pageParam }) =>
+      control<AuditPage>(
+        "audit",
+        name,
+        { limit: AUDIT_PAGE, ...(pageParam ? { before: pageParam } : {}) },
+        signal,
+      ),
+    initialPageParam: "",
+    getNextPageParam: (last) =>
+      last.more && last.entries.length
+        ? last.entries[last.entries.length - 1].at
+        : undefined,
+    refetchInterval: 30_000,
   });

@@ -4,8 +4,13 @@ import {
   ChartRangeSelect,
   type ChartRange,
 } from "@zsrobinson/shell/blocks/chart-card";
-import { QueryError } from "@zsrobinson/shell/blocks/query-error";
 import { historyConfig, historyPoints, useHistory } from "@/lib/history";
+/**
+ * Missing history is normal (no metrics source yet, a new server, a failed
+ * fetch): charts say so plainly instead of raising an error.
+ */
+const EMPTY = "No data yet";
+
 export function HistoryCharts({
   names,
   server,
@@ -23,7 +28,12 @@ export function HistoryCharts({
     const values = history.data?.series[metric]?.find(
       (s) => s.metric.server === server,
     )?.values;
-    const value = values?.at(-1)?.[1];
+    const last = values?.at(-1);
+    const end = history.data?.end;
+    const step = history.data?.step ?? 0;
+    // An old sample (a stopped server) is not a current value.
+    if (!last || (end != null && last[0] < end - 2 * step)) return undefined;
+    const value = last[1];
     return value != null && Number.isFinite(Number(value))
       ? format(Number(value))
       : undefined;
@@ -45,15 +55,10 @@ export function HistoryCharts({
     : [];
   return (
     <div className="grid min-w-0 gap-4">
-      <div className="flex justify-end">
-        <ChartRangeSelect value={range} onChange={setRange} />
-      </div>
-      {history.error && (
-        <QueryError
-          title="History could not be loaded"
-          error={history.error}
-          onRetry={() => history.refetch()}
-        />
+      {history.data?.unavailable ? null : (
+        <div className="flex justify-end">
+          <ChartRangeSelect value={range} onChange={setRange} />
+        </div>
       )}
       <ChartCard
         title="Players online"
@@ -62,6 +67,7 @@ export function HistoryCharts({
         config={config}
         data={historyPoints(history.data, "players", names)}
         loading={history.isPending}
+        emptyMessage={EMPTY}
       />
       {!playersOnly && (
         <div
@@ -94,6 +100,7 @@ export function HistoryCharts({
               config={config}
               data={historyPoints(history.data, metric, names)}
               loading={history.isPending}
+              emptyMessage={EMPTY}
               format={format}
             />
           ))}
@@ -107,6 +114,7 @@ export function HistoryCharts({
               }}
               format={(n) => `${n.toFixed(2)}/s`}
               loading={history.isPending}
+              emptyMessage={EMPTY}
             />
           )}
         </div>

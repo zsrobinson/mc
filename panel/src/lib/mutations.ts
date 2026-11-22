@@ -6,6 +6,7 @@ import {
 import { toast } from "@zsrobinson/shell";
 
 import { control, errorMessage } from "./api";
+import { withIntent } from "./intent";
 import { keys } from "./queries";
 import type { Server } from "./types";
 
@@ -22,6 +23,7 @@ export function refreshServer(queryClient: QueryClient, name: string) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: keys.server(name) }),
     queryClient.invalidateQueries({ queryKey: keys.servers }),
+    queryClient.invalidateQueries({ queryKey: keys.audit(undefined) }),
   ]);
 }
 
@@ -62,7 +64,7 @@ const DONE_MESSAGE = {
   start: "Server started",
   stop: "Server stopped",
   restart: "Server restarted",
-  kill: "Server process killed",
+  kill: "Server force-stopped",
 } as const;
 
 export type PowerAction = keyof typeof PENDING_STATE;
@@ -86,7 +88,15 @@ export function usePowerAction(name: string) {
   return useMutation({
     mutationKey: ["power", name],
     mutationFn: (action: PowerAction) =>
-      control<Server>(action, name, action === "kill" ? { confirm: true } : {}),
+      action === "kill"
+        ? withIntent(name, "kill", (intent) =>
+            control<Server>("kill", name, {
+              confirm: true,
+              confirmName: name,
+              intent,
+            }),
+          )
+        : control<Server>(action, name, {}),
     onMutate: async (action) => {
       await queryClient.cancelQueries({ queryKey: keys.status(name) });
       const previous = queryClient.getQueryData<Server>(keys.status(name));

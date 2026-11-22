@@ -1,10 +1,12 @@
 import {
   Field,
   FieldDescription,
+  FieldContent,
   FieldError,
   FieldLabel,
 } from "@zsrobinson/shell/ui/field";
 import { Input } from "@zsrobinson/shell/ui/input";
+import { Switch } from "@zsrobinson/shell/ui/switch";
 import {
   NativeSelect,
   NativeSelectOption,
@@ -20,7 +22,11 @@ export type Advanced = {
   seed: string;
   gamemode: string;
   difficulty: string;
+  hardcore: boolean;
+  levelType: LevelType | "";
 };
+
+export type LevelType = "normal" | "flat" | "large_biomes" | "amplified";
 
 export const EMPTY_ADVANCED: Advanced = {
   version: "",
@@ -29,7 +35,16 @@ export const EMPTY_ADVANCED: Advanced = {
   seed: "",
   gamemode: "",
   difficulty: "",
+  hardcore: false,
+  levelType: "",
 };
+
+const LEVEL_TYPES: { value: LevelType; label: string }[] = [
+  { value: "normal", label: "Default" },
+  { value: "flat", label: "Superflat" },
+  { value: "large_biomes", label: "Large biomes" },
+  { value: "amplified", label: "Amplified" },
+];
 
 const GAMEMODES = ["survival", "creative", "adventure", "spectator"];
 const DIFFICULTIES = ["peaceful", "easy", "normal", "hard"];
@@ -79,6 +94,8 @@ export function advancedPayload(value: Advanced) {
     ...(value.seed.trim() ? { seed: value.seed.trim() } : {}),
     ...(value.gamemode ? { gamemode: value.gamemode } : {}),
     ...(value.difficulty ? { difficulty: value.difficulty } : {}),
+    ...(value.hardcore ? { hardcore: true } : {}),
+    ...(value.levelType ? { levelType: value.levelType } : {}),
   };
 }
 
@@ -99,7 +116,7 @@ export function AdvancedFields({
   disabled: boolean;
   memoryHint?: string;
 }) {
-  const set = (key: keyof Advanced) => (next: string) =>
+  const set = (key: Exclude<keyof Advanced, "hardcore">) => (next: string) =>
     onChange({ ...value, [key]: next });
 
   return (
@@ -149,6 +166,37 @@ export function AdvancedFields({
             </NativeSelectOption>
           ))}
         </NativeSelect>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="server-level-type">World type</FieldLabel>
+        <NativeSelect
+          id="server-level-type"
+          className="w-full"
+          disabled={disabled}
+          value={value.levelType}
+          onChange={(event) => set("levelType")(event.target.value)}
+        >
+          <NativeSelectOption value="">Default</NativeSelectOption>
+          {LEVEL_TYPES.slice(1).map((type) => (
+            <NativeSelectOption key={type.value} value={type.value}>
+              {type.label}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      </Field>
+      <Field orientation="horizontal" className="self-end">
+        <FieldContent>
+          <FieldLabel htmlFor="server-hardcore">Hardcore</FieldLabel>
+          <FieldDescription>
+            One life; hard difficulty is locked.
+          </FieldDescription>
+        </FieldContent>
+        <Switch
+          id="server-hardcore"
+          disabled={disabled}
+          checked={value.hardcore}
+          onCheckedChange={(hardcore) => onChange({ ...value, hardcore })}
+        />
       </Field>
       <Field data-invalid={errors.memory ? true : undefined}>
         <FieldLabel htmlFor="server-memory">Heap memory (MiB)</FieldLabel>

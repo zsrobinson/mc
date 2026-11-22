@@ -64,22 +64,35 @@ its deletion is explicitly approved.
 The panel is a Vite app in `panel/` built on the shared shell, with TanStack
 Router file routes and TanStack Query for every request.
 
-| Route                     | Page                                                                             |
-| ------------------------- | -------------------------------------------------------------------------------- |
-| `/`                       | Servers with join addresses, players and status                                  |
-| `/new`                    | Create a server from a name; advanced options are optional                       |
-| `/servers/$name`          | Overview: status, performance, players, connection                               |
-| `/servers/$name/console`  | Live log with reconnect, RCON commands with history, log files                   |
-| `/servers/$name/players`  | Online players, whitelist, operators and bans                                    |
-| `/servers/$name/mods`     | Installed mods and datapacks, updates, Modrinth search                           |
-| `/servers/$name/files`    | Data directory browser, text editor, upload, download                            |
-| `/servers/$name/world`    | Download, replace or reset the world                                             |
-| `/servers/$name/backups`  | Snapshots, back up now, restore test, restore, download                          |
-| `/servers/$name/software` | Minecraft upgrade with compatibility check, Fabric loader                        |
-| `/servers/$name/settings` | Game settings, server.properties, resources, schedule, DNS, icon, rename, delete |
+| Route                                        | Page                                                                   |
+| -------------------------------------------- | ---------------------------------------------------------------------- |
+| `/`                                          | Dashboard: servers, players, history charts, recent backups            |
+| `/activity`                                  | Activity log for every server, filter by outcome, load older           |
+| `/new`                                       | Create a server from a name; templates and advanced options optional   |
+| `/servers/$name`                             | Overview: crash explanation, history, performance, players, connection |
+| `/servers/$name/console`                     | Live log with reconnect, RCON commands with history, log files         |
+| `/servers/$name/logs/$file`                  | One log file, read-only, with download                                 |
+| `/servers/$name/players`                     | Online players, whitelist, operators and bans with their dates         |
+| `/servers/$name/files`                       | Browser, editor, upload, download, new folder, rename, zip and extract |
+| `/servers/$name/backups`                     | Snapshots, back up now, restore test, download, automatic backup times |
+| `/servers/$name/backups/$snapshot/restore`   | Restore a snapshot after typing the server name                        |
+| `/servers/$name/schedules`                   | Restart, backup, command and announcement tasks, plus the nightly job  |
+| `/servers/$name/schedules/new`, `/$id`       | Create or edit a task                                                  |
+| `/servers/$name/activity`                    | This server's activity log                                             |
+| `/servers/$name/mods`                        | Installed mods and datapacks, updates, Modrinth search, version        |
+| `/servers/$name/world`                       | Download the world; reset and replace link to their own pages          |
+| `/servers/$name/world/reset`, `/replace`     | Reset or replace the world after typing the server name                |
+| `/servers/$name/settings`                    | Game settings with MOTD preview, server.properties                     |
+| `/servers/$name/settings/resources`, `/icon` | Memory and port; server icon                                           |
+| `/servers/$name/settings/server`             | Rename; link to delete                                                 |
+| `/servers/$name/delete`                      | Delete the server after typing its name                                |
 
-Dialogs only confirm short actions. Restoring, replacing or resetting a world,
-renaming and deleting a server require typing the server's name. The console
+Dialogs only confirm short actions and ask for names. Restoring a backup,
+replacing or resetting the world and deleting a server each have a page that
+explains the consequences and the backup taken first, then require typing the
+server's name. Those pages and force stop request a single-use token with
+`confirm-intent` and send it with the verb; a stale token is replaced once.
+Panel requests carry the signed-in email as `actor` for the activity log. The console
 follows `/api/console` server-sent events and falls back to polling `logs`.
 
 `panel/src/lib` holds the API client (`api.ts`), query and mutation hooks
@@ -87,6 +100,24 @@ follows `/api/console` server-sent events and falls back to polling `logs`.
 sections grouped by area. Scripts: `npm run dev` (with `API_PORT` pointing at
 a local API), `npm run typecheck`, `npm run lint`, `npm run format:check`,
 `npm run build`.
+
+Minecraft writes dates such as `2026-11-20 12:00:00 +0000` and snapshot ids
+look like `20261122T043201Z-ffc3be`; browsers disagree on parsing both. Panel
+code parses times with `parseTime` and formats with `formatDateTime`,
+`formatRelative` or `RelativeTime` from the shell. ESLint rejects `Date.parse`
+and `new Date(value)` on strings in `panel/`.
+
+## Fixture server
+
+`npm run dev:fixtures` serves the built `dist/` on port 8787 with an in-memory
+fake of every helper verb the panel uses, so pages can be reviewed and clicked
+through without a helper, Docker or Prometheus. It also works as the Vite
+`API_PORT` target. Fixtures are generic: servers `alpha` (running) and `bravo`
+(stopped), domain `example.com`. Mutations change the in-memory state.
+Environment switches, also settable at runtime with `GET /__fixture?…`:
+`FIXTURE_EMPTY=servers,backups,tasks,activity,files` (or `all`),
+`FIXTURE_CRASHED=1`, `FIXTURE_HISTORY=unavailable`, `FIXTURE_SLOW=ms`,
+`FIXTURE_STALE_INTENT=once|always`.
 
 ## Development
 
@@ -104,7 +135,9 @@ server boundary live in shell; keep only Minecraft behavior in this app.
 
 ## Dashboard history
 
-Configure `PROMETHEUS_URL` in the panel environment. The authenticated
+Configure `PROMETHEUS_URL` in the panel environment. Without it, or while
+Prometheus cannot be reached, the endpoint answers 200 with empty `series` and
+`unavailable: true`, and charts read "No data yet". The authenticated
 `GET /api/history?range=24h&server=alpha` endpoint accepts only 1h, 24h, 7d,
 and 30d, and an optional server validated against the helper's server list.
 It runs fixed named queries for server status, players, MSPT, CPU, memory and

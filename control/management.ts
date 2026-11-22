@@ -55,26 +55,6 @@ export class Management {
     );
     this.worlds = new Worlds(docker, backups, this.properties);
   }
-  async schedule(name: string) {
-    const path = join(await this.docker.store.folder(name), "schedule.json");
-    return (await exists(path))
-      ? (JSON.parse(await readFile(path, "utf8")) as {
-          restartAt?: string | null;
-          backupAt?: string | null;
-        })
-      : {};
-  }
-  async effectiveSchedule(name: string) {
-    const schedule = await this.schedule(name);
-    return {
-      backupAt: schedule.backupAt ?? process.env.MC_GLOBAL_BACKUP_TIME ?? null,
-      backupSource: schedule.backupAt
-        ? ("server" as const)
-        : ("global" as const),
-      restartAt: schedule.restartAt ?? null,
-      timezone: "UTC" as const,
-    };
-  }
   async restoreTestInfo(name: string) {
     const file = join(
       await this.docker.store.folder(name),
@@ -224,22 +204,6 @@ export class Management {
     }
     if (verb === "delete-server")
       return this.worlds.removeServer(name, payload);
-    if (verb === "schedule") {
-      const time = z
-        .string()
-        .regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
-        .nullable()
-        .optional();
-      const p = z
-        .object({ restartAt: time, backupAt: time })
-        .strict()
-        .parse(payload);
-      await atomic(
-        join(await this.docker.store.folder(name), "schedule.json"),
-        { ...(await this.schedule(name)), ...p },
-      );
-      return this.schedule(name);
-    }
     throw Error("Unknown management verb");
   }
   async upload(
