@@ -66,3 +66,31 @@ and numeric metrics. They never export chat, commands, player names, raw logs or
 file contents. MC_OBS_HOST labels the host; MC_OBS_HEALTH_FILE contains only a
 timestamp and pass/fail for an existing host heartbeat. The deployment owns
 Grafana dashboard/alert provisioning and its Healthchecks integration.
+
+## Activity log, confirmations and tasks
+
+Every mutating request is appended to `audit.jsonl` beside the server folders
+(0600, rotated at 5 MiB): time, actor, verb, server, outcome, duration and a
+metadata-only detail such as a file path or snapshot id. Read verbs are not
+recorded. Command text, chat, file contents and secrets never are. The panel
+passes the signed-in email as `actor`; `mcctl` uses `cli`, tasks `schedule`,
+and the crash monitor `monitor`. Read it with the `audit` verb.
+
+Deleting a server, resetting or replacing a world, restoring a snapshot and
+killing a server need `confirm: true`, the exact `confirmName` and a single-use
+`intent` token from `confirm-intent` (bound to action and server, five-minute
+expiry). A missing or reused token returns 409 `intent-required`, so no single
+replayed or stray request can destroy data. `mcctl` fetches the token itself.
+
+Per-server tasks (`tasks`, `save-task`, `delete-task`, `run-task`) replace the
+two fixed daily times: restart (with 1–15 minute in-game countdown), backup,
+console command or announcement, at a UTC time on chosen weekdays. Legacy
+`schedule` settings migrate once. The scheduler also records unexpected exits
+and restart-policy restarts as `crash-detected`; status reports `lastExit`.
+
+Files support `make-directory`, `rename-file`, `archive-files` and
+`extract-archive` within the data folder. World, `server.properties` and the
+icon stay with their dedicated actions. Extraction refuses absolute or `..`
+paths, symlink entries, secret-named files, any overwrite, more than 20,000
+entries and more than 2 GiB expanded. `read-log` returns the last 1 MiB of a
+log (gzip decompressed, ANSI stripped).
