@@ -1,34 +1,24 @@
 import { useQuery } from "@tanstack/react-query";
-import { DownloadIcon } from "lucide-react";
-import { useId, useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { ChevronRightIcon, DownloadIcon } from "lucide-react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
   Card,
   CardAction,
   CardContent,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@zsrobinson/shell/ui/card";
-import { Field, FieldContent, FieldLabel } from "@zsrobinson/shell/ui/field";
-import { Input } from "@zsrobinson/shell/ui/input";
 import { Skeleton } from "@zsrobinson/shell/ui/skeleton";
-import { Spinner } from "@zsrobinson/shell/ui/spinner";
-import { Switch } from "@zsrobinson/shell/ui/switch";
 
 import { downloadUrl } from "@/lib/api";
 import { formatBytes, formatDateTime, formatRelative } from "@/lib/format";
 import { worldInfoQuery } from "@/lib/queries";
-import { useControlMutation } from "@/lib/mutations";
-import { MAX_UPLOAD_BYTES, useUpload } from "@/lib/use-upload";
-import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 import {
   DetailList,
   DetailRow,
   Unavailable,
 } from "@zsrobinson/shell/blocks/detail-list";
-import { FileDrop } from "@zsrobinson/shell/blocks/file-drop";
-import { UploadProgress } from "@zsrobinson/shell/blocks/upload-progress";
 
 export function DownloadWorldCard({ name }: { name: string }) {
   const info = useQuery(worldInfoQuery(name));
@@ -81,144 +71,50 @@ export function DownloadWorldCard({ name }: { name: string }) {
   );
 }
 
-export function ReplaceWorldCard({ name }: { name: string }) {
-  const [file, setFile] = useState<File | null>(null);
-  const upload = useUpload("upload-world", name, () => "World replaced");
-  const tooLarge = file !== null && file.size > MAX_UPLOAD_BYTES;
-
+/** Destructive world changes each have a page that explains them first. */
+export function WorldChangesCard({ name }: { name: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Replace world</CardTitle>
+        <CardTitle>Change the world</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <FileDrop
-          accept=".zip,application/zip"
-          file={file}
-          onFile={setFile}
-          disabled={upload.isPending}
-          invalid={tooLarge}
-          label="Choose a world ZIP"
-        />
-        <p
-          className={
-            tooLarge
-              ? "text-sm text-destructive"
-              : "text-sm text-muted-foreground"
-          }
-        >
-          {tooLarge
-            ? "This file is larger than 512 MiB."
-            : "Up to 512 MiB, containing level.dat. The current world is backed up and kept."}
-        </p>
-        {upload.isPending ? (
-          <UploadProgress fraction={upload.progress} label="Uploading world" />
-        ) : null}
-      </CardContent>
-      <CardFooter>
-        <ConfirmAction
-          trigger={
+      <CardContent className="flex flex-col divide-y">
+        {(
+          [
+            [
+              "Reset world",
+              "Generate a new world from the same seed, a new seed or a random one.",
+              "/servers/$name/world/reset",
+            ],
+            [
+              "Replace world",
+              "Upload a world ZIP (up to 512 MiB) to take the current world’s place.",
+              "/servers/$name/world/replace",
+            ],
+          ] as const
+        ).map(([title, text, to]) => (
+          <div
+            key={to}
+            className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+          >
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="text-sm font-medium">{title}</span>
+              <span className="text-sm text-muted-foreground">{text}</span>
+            </div>
             <Button
-              variant="destructive"
-              disabled={!file || tooLarge || upload.isPending}
+              variant="outline"
+              render={<Link to={to} params={{ name }} />}
+              nativeButton={false}
             >
-              {upload.isPending ? <Spinner data-icon="inline-start" /> : null}
-              Replace world
+              {title}
+              <ChevronRightIcon data-icon="inline-end" />
             </Button>
-          }
-          title={`Replace the world on ${name}?`}
-          confirmLabel="Replace world"
-          destructive
-          typedName={name}
-          onConfirm={async () => {
-            await upload.mutateAsync({
-              file: file!,
-              params: { confirm: "true", confirmName: name },
-            });
-            setFile(null);
-          }}
-        >
-          The server stops, the current world is backed up and set aside, and
-          the uploaded world takes its place.
-        </ConfirmAction>
-      </CardFooter>
-    </Card>
-  );
-}
-
-export function ResetWorldCard({ name }: { name: string }) {
-  const [sameSeed, setSameSeed] = useState(true);
-  const [seed, setSeed] = useState("");
-  const seedId = useId();
-  const switchId = useId();
-  const reset = useControlMutation<
-    { seed?: string; sameSeed?: boolean; confirm: true; confirmName: string },
-    unknown
-  >("reset-world", name, { success: "World reset" });
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Reset world</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <Field orientation="horizontal">
-          <FieldContent>
-            <FieldLabel htmlFor={switchId}>Keep the current seed</FieldLabel>
-          </FieldContent>
-          <Switch
-            id={switchId}
-            checked={sameSeed}
-            onCheckedChange={setSameSeed}
-          />
-        </Field>
-        {sameSeed ? null : (
-          <Field>
-            <FieldLabel htmlFor={seedId}>Seed</FieldLabel>
-            <Input
-              id={seedId}
-              placeholder="Leave blank for a random seed"
-              maxLength={64}
-              autoComplete="off"
-              value={seed}
-              onChange={(event) => setSeed(event.target.value)}
-            />
-          </Field>
-        )}
+          </div>
+        ))}
+        <p className="pt-3 text-sm text-muted-foreground">
+          Either way the current world is backed up and pinned first.
+        </p>
       </CardContent>
-      <CardFooter>
-        <ConfirmAction
-          trigger={
-            <Button variant="destructive" disabled={reset.isPending}>
-              {reset.isPending ? <Spinner data-icon="inline-start" /> : null}
-              Reset world
-            </Button>
-          }
-          title={`Reset the world on ${name}?`}
-          confirmLabel="Reset world"
-          destructive
-          typedName={name}
-          onConfirm={() =>
-            reset.mutateAsync({
-              ...(sameSeed
-                ? { sameSeed: true }
-                : seed.trim()
-                  ? { seed: seed.trim() }
-                  : {}),
-              confirm: true,
-              confirmName: name,
-            })
-          }
-        >
-          The current world is backed up, then a new world is generated
-          {sameSeed
-            ? " from the same seed"
-            : seed.trim()
-              ? " from this seed"
-              : " from a random seed"}
-          . Player progress in it is lost.
-        </ConfirmAction>
-      </CardFooter>
     </Card>
   );
 }

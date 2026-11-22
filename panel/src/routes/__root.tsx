@@ -31,6 +31,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   },
 );
 
+const POWER_TITLES: Record<PowerAction, string> = {
+  start: "Start",
+  stop: "Stop",
+  restart: "Restart",
+  kill: "Force stop",
+};
+const POWER_LABELS: Record<PowerAction, string> = {
+  start: "Start",
+  stop: "Stop",
+  restart: "Restart",
+  kill: "Force stop",
+};
+
 function RootLayout() {
   const session = useQuery(sessionQuery);
   const [pending, setPending] = useState<{
@@ -72,20 +85,19 @@ function RootLayout() {
         onOpenChange={(open) => {
           if (!open) setPending(null);
         }}
-        title={`${pending?.verb ?? ""} ${pending?.server.name ?? ""}?`}
-        confirmLabel={
-          pending?.verb === "kill"
-            ? "Kill process"
-            : (pending?.verb ?? "Confirm")
+        title={
+          pending ? `${POWER_TITLES[pending.verb]} ${pending.server.name}?` : ""
         }
+        confirmLabel={pending ? POWER_LABELS[pending.verb] : "Confirm"}
         destructive={pending?.verb === "kill"}
+        typedName={pending?.verb === "kill" ? pending.server.name : undefined}
         onConfirm={async () => {
           if (pending) await power.mutateAsync(pending.verb);
           setPending(null);
         }}
       >
         {pending?.verb === "kill"
-          ? "The process ends immediately without saving. Changes since the last autosave are lost. Use this only when Stop does not respond."
+          ? "The process ends immediately without saving; changes since the last autosave are lost. Use this only when Stop does not respond."
           : pending?.verb === "restart"
             ? "Players are disconnected while the world saves and the server starts again."
             : pending?.verb === "stop"

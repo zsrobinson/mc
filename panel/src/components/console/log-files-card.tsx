@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { DownloadIcon } from "lucide-react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
@@ -43,7 +44,9 @@ export function LogFilesCard({ name }: { name: string }) {
             onRetry={() => files.refetch()}
           />
         ) : files.data.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No log files</p>
+          <p className="text-sm text-muted-foreground">
+            No log files yet. The server writes them as it runs.
+          </p>
         ) : (
           <Table>
             <TableHeader>
@@ -59,10 +62,16 @@ export function LogFilesCard({ name }: { name: string }) {
             <TableBody>
               {files.data.map((file) => (
                 <TableRow key={file.name}>
-                  <TableCell className="font-mono text-xs">
-                    {file.name}
+                  <TableCell className="max-w-0 font-mono text-xs">
+                    <Link
+                      to="/servers/$name/logs/$file"
+                      params={{ name, file: file.name }}
+                      className="block truncate rounded-sm underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/50"
+                    >
+                      {file.name}
+                    </Link>
                   </TableCell>
-                  <TableCell className="text-right tabular-nums">
+                  <TableCell className="text-right whitespace-nowrap tabular-nums">
                     {formatBytes(file.bytes)}
                   </TableCell>
                   <TableCell className="text-muted-foreground max-sm:hidden">

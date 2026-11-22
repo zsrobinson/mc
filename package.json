@@ -10,7 +10,8 @@
     "lint": "eslint panel vite.config.ts",
     "format": "prettier --write panel vite.config.ts eslint.config.js tsconfig.json",
     "format:check": "prettier --check panel vite.config.ts eslint.config.js tsconfig.json",
-    "shell:update": "node scripts/shell-update.mjs"
+    "shell:update": "node scripts/shell-update.mjs",
+    "dev:fixtures": "tsx scripts/fixture-server.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.0",
@@ -19,7 +20,7 @@
     "@tanstack/react-router": "^1.170.46",
     "@tanstack/router-plugin": "^1.169.0",
     "@zip.js/zip.js": "^2.25.0",
-    "@zsrobinson/shell": "git+https://github.com/zsrobinson/shell.git#b1b0dd2ae9c571a8713580014b07e8e6b5858576",
+    "@zsrobinson/shell": "git+https://github.com/zsrobinson/shell.git#18a7600d46e5b35a6ae2cf2b042c05f295fa1329",
     "hono": "^4.10.0",
     "jose": "^6.1.0",
     "lucide-react": "^1.77.0",

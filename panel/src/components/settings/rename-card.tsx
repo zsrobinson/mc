@@ -9,6 +9,13 @@ import {
   FieldLabel,
 } from "@zsrobinson/shell/ui/field";
 import { Input } from "@zsrobinson/shell/ui/input";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@zsrobinson/shell/ui/card";
 import { Spinner } from "@zsrobinson/shell/ui/spinner";
 
 import { useControlMutation } from "@/lib/mutations";
@@ -17,7 +24,7 @@ import { MAX_NAME_LENGTH, serverNameError } from "@/lib/server-name";
 import type { Server } from "@/lib/types";
 import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 
-export function RenameSection({ server }: { server: Server }) {
+export function RenameCard({ server }: { server: Server }) {
   const navigate = useNavigate();
   const servers = useQuery(serversQuery);
   const [newName, setNewName] = useState("");
@@ -29,7 +36,7 @@ export function RenameSection({ server }: { server: Server }) {
     success: (result) => `Renamed to ${result.name}`,
     onSuccess: (result) =>
       void navigate({
-        to: "/servers/$name/settings",
+        to: "/servers/$name/settings/server",
         params: { name: result.name },
         replace: true,
       }),
@@ -40,16 +47,21 @@ export function RenameSection({ server }: { server: Server }) {
       : serverNameError(newName, servers.data?.map((item) => item.name) ?? []);
 
   return (
-    <section className="flex flex-col gap-3" aria-label="Rename server">
-      <div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Rename</CardTitle>
+      </CardHeader>
+      <CardContent>
         <Field data-invalid={error ? true : undefined}>
-          <FieldLabel htmlFor={id}>Rename server</FieldLabel>
+          <FieldLabel htmlFor={id}>New name</FieldLabel>
           <Input
             id={id}
+            className="max-w-sm"
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
             maxLength={MAX_NAME_LENGTH}
+            placeholder={server.name}
             aria-invalid={error ? true : undefined}
             value={newName}
             onChange={(event) => setNewName(event.target.value.toLowerCase())}
@@ -58,12 +70,13 @@ export function RenameSection({ server }: { server: Server }) {
             <FieldError>{error}</FieldError>
           ) : (
             <FieldDescription>
-              The join address follows the new name.
+              The join address follows the new name; players using the old one
+              must switch.
             </FieldDescription>
           )}
         </Field>
-      </div>
-      <div>
+      </CardContent>
+      <CardFooter>
         <ConfirmAction
           trigger={
             <Button
@@ -86,9 +99,9 @@ export function RenameSection({ server }: { server: Server }) {
           }
         >
           The server restarts under the new name and its DNS record moves with
-          it. Players using the old address must switch to the new one.
+          it.
         </ConfirmAction>
-      </div>
-    </section>
+      </CardFooter>
+    </Card>
   );
 }

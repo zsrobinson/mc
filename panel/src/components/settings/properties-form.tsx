@@ -24,6 +24,7 @@ import {
   type PropertyField,
 } from "./property-fields";
 import { useApplyProperties } from "./use-apply-properties";
+import { MotdPreview } from "./motd-preview";
 
 const capitalize = (value: string) =>
   value.charAt(0).toUpperCase() + value.slice(1);
@@ -169,6 +170,15 @@ function PropertyInput({
         />
       )}
       {error ? <FieldError>{error}</FieldError> : null}
+      {field.key === "motd" ? (
+        <>
+          <MotdPreview value={value} />
+          <FieldDescription>
+            Colour with § codes: §a green, §e yellow, §c red, §b aqua; §l bold,
+            §o italic, §r reset.
+          </FieldDescription>
+        </>
+      ) : null}
     </Field>
   );
 }

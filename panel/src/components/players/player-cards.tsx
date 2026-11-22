@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import {
   Card,
@@ -15,6 +15,7 @@ import { Spinner } from "@zsrobinson/shell/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@zsrobinson/shell/ui/tabs";
 
 import type { Players } from "@/lib/types";
+import { formatDateTime, formatRelative, parseTime } from "@/lib/format";
 import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 import { PlayerForm } from "./player-form";
 import { EmptyList, ListRow } from "@zsrobinson/shell/blocks/list-row";
@@ -278,7 +279,7 @@ export function BansCard({ name, players }: CardProps) {
           entries={players.bannedPlayers.map((ban) => ({
             key: ban.uuid || ban.name,
             label: ban.name,
-            reason: ban.reason,
+            detail: <BanDetail ban={ban} />,
           }))}
           pendingFor={(label) => action.isPendingFor("pardon", label)}
           onPardon={(label) =>
@@ -290,7 +291,7 @@ export function BansCard({ name, players }: CardProps) {
           entries={players.bannedIps.map((ban) => ({
             key: ban.ip,
             label: ban.ip,
-            reason: ban.reason,
+            detail: <BanDetail ban={ban} />,
           }))}
           pendingFor={(label) => action.isPendingFor("pardon-ip", label)}
           onPardon={(label) =>
@@ -309,7 +310,7 @@ function BanList({
   onPardon,
 }: {
   title: string;
-  entries: { key: string; label: string; reason?: string }[];
+  entries: { key: string; label: string; detail?: ReactNode }[];
   pendingFor: (label: string) => boolean;
   onPardon: (label: string) => void;
 }) {
@@ -321,7 +322,12 @@ function BanList({
       ) : (
         <ItemGroup>
           {entries.map((entry) => (
-            <ListRow key={entry.key} name={entry.label} detail={entry.reason}>
+            <ListRow
+              key={entry.key}
+              name={entry.label}
+              detail={entry.detail}
+              wrapDetail
+            >
               <Button
                 size="xs"
                 variant="ghost"
@@ -336,4 +342,45 @@ function BanList({
       )}
     </section>
   );
+}
+
+/**
+ * Reason, when it was made and when it ends. Minecraft writes these dates as
+ * "2026-11-20 12:00:00 +0000", which parseTime reads in every browser.
+ */
+function BanDetail({
+  ban,
+}: {
+  ban: { reason?: string; created?: string; expires?: string };
+}) {
+  const [now] = useState(() => Date.now());
+  const created = ban.created ? parseTime(ban.created) : NaN;
+  const expires =
+    ban.expires && ban.expires !== "forever" ? parseTime(ban.expires) : NaN;
+  const parts: ReactNode[] = [];
+  if (ban.reason) parts.push(<span key="reason">{ban.reason}</span>);
+  if (Number.isFinite(created))
+    parts.push(
+      <span key="created" title={formatDateTime(created)}>
+        Banned {formatRelative(created, now)}
+      </span>,
+    );
+  if (Number.isFinite(expires))
+    parts.push(
+      <span key="expires" title={formatDateTime(expires)}>
+        {expires > now ? "ends" : "ended"} {formatRelative(expires, now)}
+      </span>,
+    );
+  else if (ban.expires === "forever")
+    parts.push(<span key="expires">permanent</span>);
+  return parts.length ? (
+    <>
+      {parts.map((part, index) => (
+        <span key={index}>
+          {index > 0 ? " · " : null}
+          {part}
+        </span>
+      ))}
+    </>
+  ) : null;
 }

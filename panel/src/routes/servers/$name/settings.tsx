@@ -1,13 +1,12 @@
-import { FormStack } from "@zsrobinson/shell";
-import { createFileRoute } from "@tanstack/react-router";
-
-import { DangerZone } from "@/components/settings/danger-zone";
-import { IconCard } from "@/components/settings/icon-card";
-import { PropertiesCard } from "@/components/settings/properties-card";
-import { ResourcesCard } from "@/components/settings/resources-card";
-import { ScheduleCard } from "@/components/settings/schedule-card";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useLocation,
+} from "@tanstack/react-router";
+import { PageHeader, PageStack, PageTitle } from "@zsrobinson/shell";
+import { SectionNav } from "@zsrobinson/shell/blocks/section-nav";
 import { limitsQuery, propertiesQuery } from "@/lib/queries";
-import { useServer } from "@/lib/use-server";
 
 export const Route = createFileRoute("/servers/$name/settings")({
   staticData: { crumb: "Settings" },
@@ -15,31 +14,39 @@ export const Route = createFileRoute("/servers/$name/settings")({
     void queryClient.prefetchQuery(propertiesQuery(params.name));
     void queryClient.prefetchQuery(limitsQuery);
   },
-  component: SettingsPage,
+  component: SettingsLayout,
 });
 
-function SettingsPage() {
-  const { name } = Route.useParams();
-  const { data: server } = useServer(name);
+const SECTIONS = [
+  ["game", "Game", "/servers/$name/settings"],
+  ["resources", "Resources", "/servers/$name/settings/resources"],
+  ["icon", "Icon", "/servers/$name/settings/icon"],
+  ["server", "Rename & delete", "/servers/$name/settings/server"],
+] as const;
 
+/** Settings split into sections, each its own page with its own URL. */
+function SettingsLayout() {
+  const { name } = Route.useParams();
+  const section = useLocation({
+    select: (l) => l.pathname.split("/")[4] || "game",
+  });
   return (
-    <FormStack>
-      <PropertiesCard name={name} />
-      {server ? (
-        <>
-          <ResourcesCard
-            key={`${server.memory}:${server.port}`}
-            server={server}
-          />
-          <ScheduleCard
-            key={`${server.schedule?.restartAt}:${server.schedule?.backupAt}`}
-            server={server}
-            kind="restart"
-          />
-          <IconCard name={name} />
-          <DangerZone server={server} />
-        </>
-      ) : null}
-    </FormStack>
+    <PageStack className="w-full max-w-3xl">
+      <PageHeader>
+        <PageTitle>Settings</PageTitle>
+      </PageHeader>
+      <SectionNav
+        label="Settings sections"
+        items={SECTIONS.map(([id, label, to]) => ({
+          id,
+          label,
+          active: section === id,
+          render: (
+            <Link to={to} params={{ name }} activeOptions={{ exact: true }} />
+          ),
+        }))}
+      />
+      <Outlet />
+    </PageStack>
   );
 }

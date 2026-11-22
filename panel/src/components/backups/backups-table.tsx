@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { DownloadIcon, EllipsisIcon, PinIcon } from "lucide-react";
 import { Button } from "@zsrobinson/shell/ui/button";
 import { Badge } from "@zsrobinson/shell/ui/badge";
@@ -16,7 +16,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@zsrobinson/shell/ui/dropdown-menu";
-import { ConfirmAction } from "@zsrobinson/shell/blocks/confirm-action";
 import { downloadUrl } from "@/lib/api";
 import {
   formatBytes,
@@ -34,11 +33,6 @@ export function BackupsTable({
   name: string;
   backups: Backup[];
 }) {
-  const [selected, setSelected] = useState<Backup | null>(null);
-  const restore = useControlMutation<
-    { snapshot: string; confirm: true; confirmName: string },
-    unknown
-  >("restore-backup", name, { success: "Backup restored" });
   const pin = useControlMutation<
     { snapshot: string; pinned: boolean },
     unknown
@@ -103,7 +97,7 @@ export function BackupsTable({
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Download backup"
+                      aria-label={`Download the backup from ${formatDateTime(backup.createdAt)}`}
                       render={
                         <a
                           href={downloadUrl("download-backup", name, {
@@ -122,7 +116,7 @@ export function BackupsTable({
                           <Button
                             variant="ghost"
                             size="icon-sm"
-                            aria-label="Backup actions"
+                            aria-label={`Actions for the backup from ${formatDateTime(backup.createdAt)}`}
                           />
                         }
                       >
@@ -130,10 +124,14 @@ export function BackupsTable({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          disabled={restore.isPending}
-                          onClick={() => setSelected(backup)}
+                          render={
+                            <Link
+                              to="/servers/$name/backups/$snapshot/restore"
+                              params={{ name, snapshot: backup.id }}
+                            />
+                          }
                         >
-                          Restore
+                          Restore…
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={pin.isPending}
@@ -154,28 +152,6 @@ export function BackupsTable({
             ))}
         </TableBody>
       </Table>
-      <ConfirmAction
-        open={!!selected}
-        onOpenChange={(v) => {
-          if (!v) setSelected(null);
-        }}
-        title="Restore this backup?"
-        confirmLabel="Restore backup"
-        destructive
-        typedName={name}
-        onConfirm={async () => {
-          if (selected)
-            await restore.mutateAsync({
-              snapshot: selected.id,
-              confirm: true,
-              confirmName: name,
-            });
-          setSelected(null);
-        }}
-      >
-        The current state is backed up first. The server stops and returns to{" "}
-        {selected ? formatDateTime(selected.createdAt) : "this snapshot"}.
-      </ConfirmAction>
     </>
   );
 }

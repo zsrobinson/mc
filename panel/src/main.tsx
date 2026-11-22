@@ -40,6 +40,12 @@ declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
     /** Breadcrumb label for routes without a dynamic title. */
     crumb?: string;
+    /** Use this route param as the breadcrumb label instead, e.g. a file name. */
+    crumbParam?: string;
+    /** A section crumb shown before this one, for pages nested in a section. */
+    parentCrumb?: { label: string; to: string };
+    /** The page fills the viewport and scrolls inside (console, logs). */
+    viewport?: boolean;
   }
 }
 

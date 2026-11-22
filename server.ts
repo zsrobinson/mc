@@ -122,7 +122,16 @@ app.post("/api/control", async (c) => {
   try {
     if (Number(c.req.header("Content-Length") || 0) > 24 * 1024 * 1024)
       return c.json({ error: "Request too large" }, 413);
-    const body = await c.req.text();
+    let input: unknown;
+    try {
+      input = JSON.parse(await c.req.text());
+    } catch {
+      return c.json({ error: "Invalid request" }, 400);
+    }
+    if (!input || typeof input !== "object" || Array.isArray(input))
+      return c.json({ error: "Invalid request" }, 400);
+    // The signed-in email attributes the action in the helper's activity log.
+    const body = JSON.stringify({ ...input, actor: c.get("email") });
     const result = await new Promise<{ status: number; body: string }>(
       (resolve, reject) => {
         const req = request(

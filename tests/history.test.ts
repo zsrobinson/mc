@@ -72,9 +72,26 @@ test("history limits queries, validates known servers, chooses steps and caches"
     await app.request("/api/history?range=1h&server=alpha");
     assert.equal(calls, Object.keys(metrics).length);
     unavailable = true;
-    assert.equal((await app.request("/api/history?range=1h")).status, 502);
+    // Prometheus failing is reported as empty history, never a 5xx.
+    const failed = await app.request("/api/history?range=1h");
+    assert.equal(failed.status, 200);
+    const failedBody = await failed.json();
+    assert.equal(failedBody.unavailable, true);
+    assert.deepEqual(failedBody.series, {});
+    assert.equal(failedBody.range, "1h");
+    assert.equal(failedBody.step, 30000);
+    assert.equal(failedBody.end - failedBody.start, 3600000);
+    assert.equal(failedBody.timeUnit, "milliseconds");
     delete process.env.PROMETHEUS_URL;
-    assert.equal((await app.request("/api/history")).status, 503);
+    const unset = await app.request("/api/history");
+    assert.equal(unset.status, 200);
+    const unsetBody = await unset.json();
+    assert.equal(unsetBody.unavailable, true);
+    assert.equal(unsetBody.range, "24h");
+    assert.deepEqual(unsetBody.series, {});
+    // Invalid input is still rejected while history is unavailable.
+    assert.equal((await app.request("/api/history?range=forever")).status, 400);
+    assert.equal((await app.request("/api/history?server=A%22")).status, 400);
   } finally {
     for (const key of [
       "HELPER_SOCKET",
