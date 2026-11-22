@@ -242,6 +242,11 @@ export class Worlds {
       bytes,
       modifiedAt: new Date(modified).toISOString(),
       version: meta.Version?.Name,
+      // 64-bit seeds exceed JSON numbers; newer layouts may omit it here.
+      seed:
+        meta.WorldGenSettings?.seed ?? meta.RandomSeed
+          ? String(meta.WorldGenSettings?.seed ?? meta.RandomSeed)
+          : undefined,
     };
   }
   async zip(name: string) {

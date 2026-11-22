@@ -331,3 +331,17 @@ test("crash monitor records unexpected exits and policy restarts once", () =>
     const log = await f.control.audit.list({ server: "alpha" });
     assert.equal(log.entries.filter((e) => e.verb === "crash-detected").length, 2);
   }));
+
+test("world info reports the seed as a string without losing 64-bit precision", () =>
+  withFixture(async (f) => {
+    const { write } = await import("nbtify");
+    await mkdir(f.data("world"), { recursive: true });
+    const level = await write(
+      { Data: { Version: { Name: "1.21.1" }, WorldGenSettings: { seed: -4172144997902289642n } } },
+      { rootName: "", endian: "big", compression: "gzip", bedrockLevel: false },
+    );
+    await writeFile(f.data("world/level.dat"), level);
+    const info = await (await f.call({ verb: "world-info", name: "alpha" })).json();
+    assert.equal(info.seed, "-4172144997902289642");
+    assert.equal(info.version, "1.21.1");
+  }));
